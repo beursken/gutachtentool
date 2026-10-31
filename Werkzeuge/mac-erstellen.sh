@@ -15,16 +15,17 @@ TEMPORAER="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 
 # Ausgabe mitschreiben; bei einem Fehler die letzten Zeilen als Annotation melden (im Lauf unter „Annotations“ sichtbar).
 PROTOKOLL="$TEMPORAER/mac-protokoll.txt"
+exec 3>&1
 exec > >(tee "$PROTOKOLL") 2>&1
 PHASE="Start"
-phase() { PHASE="$1"; echo "::notice title=Mac-Build::$1"; }
+phase() { PHASE="$1"; echo "::notice title=Mac-Build::$1" >&3; }
 amEnde() {
   local code=$?
   [ $code -eq 0 ] && return 0
   sleep 1
   local ende
   ende=$(tail -n 25 "$PROTOKOLL" | cut -c1-200 | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS="%0A"} {print}' | cut -c1-3500)
-  echo "::error title=Mac-Build gescheitert (${PHASE})::${ende}"
+  echo "::error title=Mac-Build gescheitert (${PHASE})::${ende}" >&3
   sleep 1
 }
 set -E
@@ -102,9 +103,11 @@ for RID in osx-arm64 osx-x64; do
   phase "Signieren $RID"
   if [ -n "$IDENTITAET" ]; then
     # Erst alle Dateien einzeln (Bibliotheken, Programm), dann das Bündel
-    find "$APP/Contents/MacOS" -type f | while read -r datei; do signieren "$datei"; done
+    while IFS= read -r datei; do
+      signieren "$datei" || { echo "Signieren fehlgeschlagen: $datei"; exit 1; }
+    done < <(find "$APP/Contents/MacOS" -type f)
     signieren "$APP"
-    codesign --verify --deep --strict --verbose=2 "$APP"
+    codesign --verify --deep --strict --verbose=2 "$APP" || echo "::warning title=Mac-Build::codesign --verify meldet Abweichungen ($RID)" >&3
   fi
 
   phase "DMG $RID"
