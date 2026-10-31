@@ -16,15 +16,19 @@ TEMPORAER="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 # Ausgabe mitschreiben; bei einem Fehler die letzten Zeilen als Annotation melden (im Lauf unter „Annotations“ sichtbar).
 PROTOKOLL="$TEMPORAER/mac-protokoll.txt"
 exec > >(tee "$PROTOKOLL") 2>&1
-fehlerMelden() {
-  local code=$? zeile=$1
+PHASE="Start"
+phase() { PHASE="$1"; echo "::notice title=Mac-Build::$1"; }
+amEnde() {
+  local code=$?
+  [ $code -eq 0 ] && return 0
   sleep 1
   local ende
-  ende=$(tail -n 60 "$PROTOKOLL" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS="%0A"} {print}')
-  echo "::error title=mac-erstellen.sh, Zeile ${zeile}::${ende}"
-  exit $code
+  ende=$(tail -n 25 "$PROTOKOLL" | cut -c1-200 | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS="%0A"} {print}' | cut -c1-3500)
+  echo "::error title=Mac-Build gescheitert (${PHASE})::${ende}"
+  sleep 1
 }
-trap 'fehlerMelden $LINENO' ERR
+set -E
+trap amEnde EXIT
 
 if [ ! -d Gutachtentool.Mac ]; then
   echo "Gutachtentool.Mac fehlt – übersprungen."
@@ -37,6 +41,7 @@ rm -rf "$AUSGABE"
 mkdir -p "$AUSGABE"
 
 # ---------- Programmsymbol (.icns) aus icon-512.png ----------
+phase "Programmsymbol"
 ICONSET="$AUSGABE/Gutachtentool.iconset"
 mkdir -p "$ICONSET"
 QUELLE="Gutachtentool.Web/wwwroot/icon-512.png"
@@ -48,6 +53,7 @@ done
 iconutil -c icns "$ICONSET" -o "$AUSGABE/Gutachtentool.icns"
 
 # ---------- Signierung vorbereiten ----------
+phase "Zertifikat einrichten"
 IDENTITAET=""
 if [ -n "${MAC_ZERTIFIKAT_P12:-}" ]; then
   SCHLUESSELBUND="$TEMPORAER/gutachtentool.keychain-db"
@@ -82,6 +88,7 @@ signieren() {
 for RID in osx-arm64 osx-x64; do
   NAME=$([ "$RID" = osx-arm64 ] && echo "AppleSilicon" || echo "Intel")
   ZIEL="$AUSGABE/$RID"
+  phase "Veröffentlichen $RID"
   dotnet publish Gutachtentool.Mac/Gutachtentool.Mac.csproj -c Release -r "$RID" --self-contained true \
     -p:PublishSingleFile=false -p:UseAppHost=true -p:DebugType=none -p:DebugSymbols=false -o "$ZIEL/publish"
 
@@ -92,6 +99,7 @@ for RID in osx-arm64 osx-x64; do
   cp "$AUSGABE/Gutachtentool.icns" "$APP/Contents/Resources/Gutachtentool.icns"
   chmod +x "$APP/Contents/MacOS/Gutachtentool"
 
+  phase "Signieren $RID"
   if [ -n "$IDENTITAET" ]; then
     # Erst alle Dateien einzeln (Bibliotheken, Programm), dann das Bündel
     find "$APP/Contents/MacOS" -type f | while read -r datei; do signieren "$datei"; done
@@ -99,6 +107,7 @@ for RID in osx-arm64 osx-x64; do
     codesign --verify --deep --strict --verbose=2 "$APP"
   fi
 
+  phase "DMG $RID"
   DMG="$AUSGABE/Gutachtentool-$VERSION-$NAME.dmg"
   INHALT="$ZIEL/dmg"
   mkdir -p "$INHALT"
@@ -110,8 +119,9 @@ for RID in osx-arm64 osx-x64; do
     codesign --force --timestamp --sign "$IDENTITAET" "$DMG"
   fi
   if [ -n "$NOTAR" ]; then
+    phase "Notarisieren $RID"
     xcrun notarytool submit "$DMG" --key "$TEMPORAER/AuthKey.p8" \
-      --key-id "$MAC_NOTAR_SCHLUESSEL_ID" --issuer "$MAC_NOTAR_AUSSTELLER" --wait --timeout 30m
+      --key-id "${MAC_NOTAR_SCHLUESSEL_ID:-}" --issuer "${MAC_NOTAR_AUSSTELLER:-}" --wait --timeout 30m
     xcrun stapler staple "$DMG"
     spctl --assess --type open --context context:primary-signature -v "$DMG" || true
   fi
