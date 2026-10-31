@@ -4,7 +4,7 @@ using Gutachten2025.Services;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
-namespace Gutachtentool.Web.Dienste;
+namespace Gutachtentool.Oberflaeche.Dienste;
 
 /// <summary>Meldung am unteren Rand (wie die InfoBar der Windows-Fassung).</summary>
 public sealed record Meldung(Meldungsart Art, string Titel, string Text, string? Aktion, Action? BeiAktion)
@@ -64,15 +64,22 @@ public sealed class DateiDialog : Dialog
 }
 
 /// <summary>
-/// IUiService für den Browser: Dialoge und Meldungen in der Seite, „Öffnen“ = Herunterladen,
-/// Dateiauswahl = Hochladen in den Übergabeordner des virtuellen Dateisystems.
+/// IUiService der Blazor-Oberfläche (Browser und Mac): Dialoge und Meldungen in der Seite;
+/// Dateiauswahl, Speichern und Öffnen über die <see cref="IPlattform"/>.
 /// </summary>
-public sealed class WebUi : IUiService
+public sealed class UiDienst : IUiService
 {
-    readonly IJSInProcessRuntime _js;
-    readonly List<string> _ausstehend = new();
+    /// <summary>Übergabeordner für hochgeladene Dateien (Browser).</summary>
+    public const string Eingang = "/tmp/gt-eingang";
 
-    public WebUi(IJSRuntime js) => _js = (IJSInProcessRuntime)js;
+    readonly IJSRuntime _js;
+    readonly IPlattform _plattform;
+
+    public UiDienst(IJSRuntime js, IPlattform plattform)
+    {
+        _js = js;
+        _plattform = plattform;
+    }
 
     /// <summary>Löst ein Neuzeichnen der Seite aus.</summary>
     public event Action? Geaendert;
@@ -240,6 +247,7 @@ public sealed class WebUi : IUiService
 
     public Task<string?> DateiWaehlenAsync(params string[] endungen)
     {
+        if (!_plattform.ImBrowser) return _plattform.DateiWaehlenAsync(endungen);
         var d = new DateiDialog { Titel = "Datei hochladen", Endungen = endungen };
         return ZeigenAsync(d, d.Ende.Task);
     }
@@ -259,8 +267,8 @@ public sealed class WebUi : IUiService
         Melde();
         try
         {
-            Directory.CreateDirectory(Ablagespeicher.Eingang);
-            string ziel = Path.Combine(Ablagespeicher.Eingang, KlausurAblage.SicherName(Path.GetFileNameWithoutExtension(datei.Name)) + endung);
+            Directory.CreateDirectory(Eingang);
+            string ziel = Path.Combine(Eingang, KlausurAblage.SicherName(Path.GetFileNameWithoutExtension(datei.Name)) + endung);
             await using (Stream quelle = datei.OpenReadStream(maxAllowedSize: 200L * 1024 * 1024))
             await using (FileStream f = File.Create(ziel))
                 await quelle.CopyToAsync(f);
@@ -274,68 +282,39 @@ public sealed class WebUi : IUiService
         }
     }
 
-    public Task<string?> SpeicherortWaehlenAsync(string vorschlag, string endung, string bezeichnung)
-    {
-        Directory.CreateDirectory(Ablagespeicher.Ausgang);
-        string pfad = Path.Combine(Ablagespeicher.Ausgang, KlausurAblage.SicherName(vorschlag) + endung);
-        if (File.Exists(pfad)) File.Delete(pfad);
-        lock (_ausstehend) _ausstehend.Add(pfad);
-        return Task.FromResult<string?>(pfad);
-    }
+    public Task<string?> SpeicherortWaehlenAsync(string vorschlag, string endung, string bezeichnung) =>
+        _plattform.SpeicherortWaehlenAsync(vorschlag, endung, bezeichnung);
 
-    /// <summary>Lädt Dateien herunter, die seit <see cref="SpeicherortWaehlenAsync"/> geschrieben wurden.</summary>
-    public void AusstehendeHerunterladen()
+    public Task<string?> OrdnerWaehlenAsync() => _plattform.OrdnerWaehlenAsync();
+
+    public void Oeffnen(string pfad) => _ = OeffnenAsync(pfad);
+
+    async Task OeffnenAsync(string pfad)
     {
-        List<string> fertig;
-        lock (_ausstehend)
+        try
         {
-            fertig = _ausstehend.Where(File.Exists).ToList();
-            _ausstehend.RemoveAll(fertig.Contains);
+            await _plattform.OeffnenAsync(pfad);
         }
-        foreach (string pfad in fertig)
+        catch (Exception ex)
         {
-            Herunterladen(pfad);
-            File.Delete(pfad);
+            Melden(Meldungsart.Fehler, "Nicht geöffnet", ex.Message);
         }
     }
 
-    public Task<string?> OrdnerWaehlenAsync()
+    /// <summary>Daten als Datei ausgeben (Browser: herunterladen; Mac: speichern).</summary>
+    public async Task AusgebenAsync(string name, byte[] daten)
     {
-        Melden(Meldungsart.Information, "Nicht verfügbar",
-            "Die Browser-Fassung speichert alle Daten im Browser. Sicherung und Übertragung: Menü „Daten“.");
-        return Task.FromResult<string?>(null);
-    }
-
-    public void Oeffnen(string pfad)
-    {
-        if (Directory.Exists(pfad))
+        try
         {
-            Melden(Meldungsart.Information, "Kein Ordner im Browser",
-                "Einzelne Dateien stehen im Menü „Klausur“ zum Herunterladen bereit; alle Daten über „Daten › Sicherung herunterladen“.");
-            return;
+            await _plattform.AusgebenAsync(name, daten);
         }
-        if (File.Exists(pfad)) Herunterladen(pfad);
-        else Melden(Meldungsart.Fehler, "Datei nicht gefunden", Path.GetFileName(pfad));
+        catch (Exception ex)
+        {
+            Melden(Meldungsart.Fehler, "Nicht gespeichert", ex.Message);
+        }
     }
 
-    public void Herunterladen(string pfad) => Herunterladen(Path.GetFileName(pfad), File.ReadAllBytes(pfad));
-
-    public void Herunterladen(string name, byte[] daten) =>
-        _js.InvokeVoid("gutachtentool.herunterladen", name, Dateityp(name), daten);
-
-    static string Dateityp(string name) => Path.GetExtension(name).ToLowerInvariant() switch
-    {
-        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".dotx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
-        ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ".pdf" => "application/pdf",
-        ".txt" or ".md" => "text/plain;charset=utf-8",
-        ".json" => "application/json",
-        ".zip" => "application/zip",
-        _ => "application/octet-stream",
-    };
-
-    /// <summary>Drucken ist im Browser nicht über Word möglich (die Schaltfläche fehlt dort).</summary>
+    /// <summary>Drucken über Word gibt es nur unter Windows (die Schaltfläche fehlt hier).</summary>
     public bool Drucken(string pfad) => false;
 
     public void Fokussieren(Eingabefeld feld)
@@ -347,9 +326,14 @@ public sealed class WebUi : IUiService
             Eingabefeld.Matrikel => "f-matrikel",
             Eingabefeld.Note => "f-note",
             Eingabefeld.Suche => "f-suche",
-            _ => WebEditor.ElementId,
+            _ => EntwurfEditor.ElementId,
         };
-        try { _js.InvokeVoid("gutachtentool.fokus", id); }
+        _ = FokusAsync(id);
+    }
+
+    async Task FokusAsync(string id)
+    {
+        try { await _js.InvokeVoidAsync("gutachtentool.fokus", id); }
         catch (JSException) { }
     }
 

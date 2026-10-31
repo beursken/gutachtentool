@@ -1,5 +1,7 @@
-// Gutachtentool (Browser-Fassung): Browserspeicher, Herunterladen und Entwurfseditor.
-// Alle Daten bleiben in der IndexedDB dieses Browsers; nichts wird an einen Server gesendet.
+// Gutachtentool (Browser- und Mac-Fassung): Browserspeicher, Herunterladen und Entwurfseditor.
+// Browser: alle Daten bleiben in der IndexedDB dieses Browsers; nichts wird an einen Server gesendet.
+// Mac: dieselbe Datei im nativen Fenster (WebKit); Speicher und Herunterladen werden dort nicht genutzt.
+// Nur asynchrone Aufrufe nach .NET (im Mac-Fenster gibt es keine synchronen).
 window.gutachtentool = (() => {
     'use strict';
 
@@ -60,8 +62,14 @@ window.gutachtentool = (() => {
     }
 
     // ---------- Entwurfseditor (contenteditable, nur <b>, <i>, <br>) ----------
-    let netz = null;          // DotNetObjectReference des WebEditor
+    let netz = null;          // DotNetObjectReference des EntwurfEditor
     let auswahl = null;       // letzte Cursorposition im Editor
+    let kuerzel = {};         // festes Kürzel (klein, ohne #) → Bausteintext
+    const kuerzelVorCursor = /(?<![\p{L}\d_\-])#?([\p{L}\d_\-]{1,24})$/u;
+
+    function melden(id) {
+        if (netz) netz.invokeMethodAsync('EntwurfEingabe', laeufe(id));
+    }
 
     function imEditor(el, knoten) { return knoten && (knoten === el || el.contains(knoten)); }
 
@@ -148,7 +156,7 @@ window.gutachtentool = (() => {
             el.dataset.angemeldet = '1';
             try { document.execCommand('styleWithCSS', false, false); } catch (e) { /* ältere Browser */ }
             document.addEventListener('selectionchange', () => cursorMerken(el));
-            el.addEventListener('input', () => netz && netz.invokeMethodAsync('EntwurfGeaendert'));
+            el.addEventListener('input', () => melden(id));
             el.addEventListener('paste', e => {
                 // Nur reiner Text: keine Formatierung aus Word oder Webseiten übernehmen.
                 e.preventDefault();
@@ -166,14 +174,15 @@ window.gutachtentool = (() => {
                     document.execCommand(e.key === 'b' ? 'bold' : 'italic');
                     return;
                 }
-                if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && netz) {
-                    const treffer = netz.invokeMethod('KuerzelPruefen', textVorCursor(el, 30));
-                    if (!treffer) return;
+                if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    const m = kuerzelVorCursor.exec(textVorCursor(el, 30));
+                    const text = m ? kuerzel[m[1].toLowerCase()] : undefined;
+                    if (!text) return;
                     e.preventDefault();
                     const s = document.getSelection();
-                    for (let i = 0; i < treffer.laenge; i++) s.modify('extend', 'backward', 'character');
+                    for (let i = 0; i < m[0].length; i++) s.modify('extend', 'backward', 'character');
                     document.execCommand('delete');
-                    editor.baustein(id, treffer.text);
+                    editor.baustein(id, text);
                 }
             });
         },
@@ -182,6 +191,7 @@ window.gutachtentool = (() => {
             if (el) { el.innerHTML = html; auswahl = null; }
         },
         laeufe,
+        kuerzel(liste) { kuerzel = liste || {}; },
         baustein(id, text) {
             const el = document.getElementById(id);
             if (!el) return;

@@ -13,3 +13,6 @@ Sicherung_*/
 *.CER
 *.pfx
 *.p12
+*.p8
+*.key
+*.csr

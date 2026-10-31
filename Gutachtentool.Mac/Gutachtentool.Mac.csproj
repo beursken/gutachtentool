@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <!-- Mac-Fassung des Gutachtentools: natives Fenster (Photino, WebKit) mit der gemeinsamen Blazor-Oberfläche.
+       Echte Dateien im Ablageordner (Standard ~/Documents/Klausuren), Word/Excel über „open“.
+       Erstellen, Signieren und Notarisieren: Werkzeuge/mac-erstellen.sh (GitHub Actions, macOS). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Gutachtentool.Mac</RootNamespace>
+    <AssemblyName>Gutachtentool</AssemblyName>
+    <Version>1.3.0</Version>
+    <Product>Gutachtentool</Product>
+    <Company>Universität Passau</Company>
+    <RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="4.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gutachtentool.Oberflaeche\Gutachtentool.Oberflaeche.csproj" />
+  </ItemGroup>
+
+  <!-- Webinhalt: eigene index.html, Stil, Skript und Symbole aus der Browser-Fassung -->
+  <ItemGroup>
+    <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachtentool.Web\wwwroot\css\app.css" Link="wwwroot\css\app.css" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachtentool.Web\wwwroot\js\gutachtentool.js" Link="wwwroot\js\gutachtentool.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachtentool.Web\wwwroot\favicon.png" Link="wwwroot\favicon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachtentool.Web\wwwroot\icon-512.png" Link="wwwroot\icon-512.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

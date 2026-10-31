@@ -2,14 +2,14 @@
 @using System.Windows.Input
 @using CommunityToolkit.Mvvm.Input
 @implements IAsyncDisposable
-@inject Ablagespeicher Speicher
-@inject WebUi Ui
-@inject WebEditor Editor
+@inject IPlattform Plattform
+@inject UiDienst Ui
+@inject EntwurfEditor Editor
 @inject IJSRuntime Js
 
 <div class="app">
     <header class="kopf">
-        <div class="marke" title="Gutachtentool @Fassung – Browser-Fassung">
+        <div class="marke" title="Gutachtentool @Fassung – @(Plattform.ImBrowser ? "Browser-Fassung" : "Mac-Fassung")">
             <img src="favicon.png" alt="" width="20" height="20" />
             <span>Gutachtentool</span>
         </div>
@@ -38,23 +38,29 @@
                     {
                         <div class="menueliste" @onclick="() => _menue = null">
                             <button @onclick="() => Los(_vm.KonfigurationBearbeitenCommand)">Klausureinstellungen …</button>
+                            @if (!Plattform.ImBrowser)
+                            {
+                                <button @onclick="() => Los(_vm.OrdnerOeffnenCommand)">Klausurordner im Finder zeigen</button>
+                            }
                             <hr />
-                            <button @onclick="() => Los(_vm.NotenlisteOeffnenCommand)">Notenliste herunterladen</button>
-                            <button @onclick="() => Los(_vm.ErwartungshorizontOeffnenCommand)">Erwartungshorizont herunterladen</button>
-                            <button @onclick="() => Los(_vm.TeilnehmendeImportierenCommand)">Teilnehmendenliste hochladen …</button>
+                            <button @onclick="() => Los(_vm.NotenlisteOeffnenCommand)">Notenliste @Oeffnen</button>
+                            <button @onclick="() => Los(_vm.ErwartungshorizontOeffnenCommand)">Erwartungshorizont @Oeffnen</button>
+                            <button @onclick="() => Los(_vm.TeilnehmendeImportierenCommand)">Teilnehmendenliste @Laden …</button>
                             <hr />
-                            <button @onclick="() => Los(_vm.VorlageBearbeitenCommand)">Word-Vorlage herunterladen</button>
-                            <button @onclick="() => Los(_vm.VorlageImportierenCommand)">Word-Vorlage hochladen …</button>
-                            <button @onclick="() => Los(_vm.FormulierungenBearbeitenCommand)">Textbausteine herunterladen (Texte.txt)</button>
-                            <button @onclick="() => Los(_vm.FormulierungenImportierenCommand)">Textbausteine hochladen …</button>
-                            <button @onclick="() => Los(_vm.RohpunkteInExcelBearbeitenCommand)">Rohpunkteschema als Excel herunterladen</button>
-                            <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema hochladen …</button>
+                            <button @onclick="() => Los(_vm.VorlageBearbeitenCommand)">Word-Vorlage @Oeffnen</button>
+                            <button @onclick="() => Los(_vm.VorlageImportierenCommand)">Word-Vorlage @Laden …</button>
+                            <button @onclick="() => Los(_vm.FormulierungenBearbeitenCommand)">Textbausteine (Texte.txt) @Oeffnen</button>
+                            <button @onclick="() => Los(_vm.FormulierungenImportierenCommand)">Textbausteine @Laden …</button>
+                            <button @onclick="() => Los(_vm.RohpunkteInExcelBearbeitenCommand)">Rohpunkteschema in Excel @Oeffnen</button>
+                            <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema @Laden …</button>
                             <hr />
                             <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
                             <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
                         </div>
                     }
                 </div>
+                @if (Plattform is IBrowserSicherung)
+                {
                 <div class="menue">
                     <button class="knopf leise @(_menue == "daten" ? "aktiv" : "")" @onclick='() => MenueUmschalten("daten")'>Daten ▾</button>
                     @if (_menue == "daten")
@@ -74,6 +80,11 @@
                         </div>
                     }
                 </div>
+                }
+                else
+                {
+                    <button class="knopf leise" @onclick="() => Los(_vm.AblageordnerWaehlenCommand)" title="@_vm.AblageordnerText">Ablageordner …</button>
+                }
                 <button class="knopf leise @(_vm.SeitenleisteOffen ? "aktiv" : "")" @onclick="() => _vm.SeitenleisteOffen = !_vm.SeitenleisteOffen" title="Übersicht ein-/ausblenden">Übersicht</button>
             </nav>
         }
@@ -209,15 +220,15 @@
                     <span class="abstand"></span>
                     @if (_reiter == 0)
                     {
-                        <button class="format" title="Fett (Strg+B)" @onclick='() => Editor.Formatieren("bold")'><b>F</b></button>
-                        <button class="format" title="Kursiv (Strg+I)" @onclick='() => Editor.Formatieren("italic")'><i>K</i></button>
+                        <button class="format" title="Fett (Strg+B)" @onclick='() => Editor.FormatierenAsync("bold")'><b>F</b></button>
+                        <button class="format" title="Kursiv (Strg+I)" @onclick='() => Editor.FormatierenAsync("italic")'><i>K</i></button>
                     }
                 </div>
             }
 
             @* Der Editor ist immer vorhanden: das ViewModel setzt den Entwurf schon beim Start. *@
             <div class="editorrahmen @(_reiter == 0 ? "" : "verborgen")">
-                <div id="@WebEditor.ElementId" class="editor" contenteditable="true" spellcheck="true" lang="de"
+                <div id="@EntwurfEditor.ElementId" class="editor" contenteditable="true" spellcheck="true" lang="de"
                      data-platzhalter="Gutachtentext – Bausteine links anklicken oder Kürzel + Tab"></div>
             </div>
 
@@ -247,13 +258,17 @@
                 <span>· @rp</span>
             }
             <span class="abstand"></span>
-            @if (Speicher.Fehler is { } f)
+            @if (!Plattform.ImBrowser)
             {
-                <span class="fehlertext" title="@f">Speichern im Browser fehlgeschlagen</span>
+                <span title="@_vm.AblageordnerText">Ablage: @_vm.AblageordnerText</span>
             }
-            else if (Speicher.Gesichert is { } g)
+            @if (Plattform.Fehler is { } f)
             {
-                <span title="Alle Daten bleiben in diesem Browser">Im Browser gespeichert @g.ToString("HH:mm:ss")</span>
+                <span class="fehlertext" title="@f">Speichern fehlgeschlagen</span>
+            }
+            else if (Plattform.Stand is { } stand)
+            {
+                <span>@stand</span>
             }
         }
     </footer>
@@ -267,8 +282,12 @@
     int? _kommentarZeile;
     (double Belegt, double Verfuegbar)? _belegung;
     Timer? _takt;
-    DotNetObjectReference<WebEditor>? _editorRef;
+    DotNetObjectReference<EntwurfEditor>? _editorRef;
     DotNetObjectReference<Hauptseite>? _seitenRef;
+
+    /// <summary>Wortlaut der Menüpunkte: im Browser herunter- bzw. hochladen, auf dem Mac öffnen bzw. laden.</summary>
+    string Oeffnen => Plattform.ImBrowser ? "herunterladen" : "öffnen";
+    string Laden => Plattform.ImBrowser ? "hochladen" : "laden";
 
     static string Fassung =>
         typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? string.Empty;
@@ -284,10 +303,10 @@
         if (firstRender)
         {
             _editorRef = DotNetObjectReference.Create(Editor);
-            await Js.InvokeVoidAsync("gutachtentool.editor.anmelden", WebEditor.ElementId, _editorRef);
+            await Js.InvokeVoidAsync("gutachtentool.editor.anmelden", EntwurfEditor.ElementId, _editorRef);
             try
             {
-                await Speicher.LadenAsync();
+                await Plattform.StartAsync();
             }
             catch (JSException ex)
             {
@@ -296,7 +315,6 @@
             }
             _vm = new MainViewModel(Ui, Editor);
             _vm.PropertyChanged += VmGeaendert;
-            Editor.KuerzelSuche = _vm.BausteinNachKuerzel;
             Editor.Geaendert = _vm.EntwurfGeaendert;
             Editor.AnderesZiel = InAnmerkungEinfuegen;
             _phase = 1;
@@ -308,13 +326,11 @@
             _phase = 2;
             _vm.Initialisieren();
             // Im Browser bedeutet „Öffnen“ Herunterladen: das erstellte Gutachten wird stets heruntergeladen.
-            _vm.WordOeffnen = true;
-            await Speicher.SichernAsync();
+            if (Plattform.ImBrowser) _vm.WordOeffnen = true;
+            await Nachlauf();
             _seitenRef = DotNetObjectReference.Create(this);
             await Js.InvokeVoidAsync("gutachtentool.beimVerlassen", _seitenRef);
             _takt = new Timer(_ => _ = InvokeAsync(TaktAsync), null, 3000, 3000);
-            _belegung = await Speicher.BelegungAsync();
-            StateHasChanged();
         }
     }
 
@@ -330,8 +346,8 @@
     {
         if (_vm is null) return;
         _vm.Autosave();
-        Ui.AusstehendeHerunterladen();
-        if (await Speicher.SichernAsync() > 0) StateHasChanged();
+        await Plattform.NachlaufAsync();
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -339,14 +355,14 @@
     {
         if (_vm is null) return;
         _vm.Autosave(erzwingen: true);
-        await Speicher.SichernAsync();
+        await Plattform.NachlaufAsync();
     }
 
     /// <summary>Nach jeder Aktion: Downloads ausliefern, Daten sichern, neu zeichnen.</summary>
     async Task Nachlauf()
     {
-        Ui.AusstehendeHerunterladen();
-        await Speicher.SichernAsync();
+        await Plattform.NachlaufAsync();
+        if (_vm is not null) await Editor.KuerzelMeldenAsync(_vm.Bausteine);
         StateHasChanged();
     }
 
@@ -380,7 +396,7 @@
 
     async Task BelegungAktualisierenAsync()
     {
-        _belegung = await Speicher.BelegungAsync();
+        if (Plattform is IBrowserSicherung s) _belegung = await s.BelegungAsync();
         StateHasChanged();
     }
 
@@ -396,9 +412,12 @@
         if (_vm is null || _reiter != 1 || _kommentarZeile is not int n || n >= _vm.Rohpunktzeilen.Count) return false;
         RohpunktZeile z = _vm.Rohpunktzeilen[n];
         if (!z.IstEingabe) return false;
-        string? wert = ((IJSInProcessRuntime)Js).Invoke<string?>("gutachtentool.feld.einfuegen", RohpunkteReiter.FeldId(n), text);
-        if (wert is null) return false;
-        z.KommentarVomEditor(new List<TextLauf> { new(wert) });
+        // Am Ende der Anmerkung anfügen (wie beim Einfügen in den Entwurf mit Leerzeichen und Satzpunkt).
+        string bisher = string.Concat(z.Kommentar.Select(l => l.T));
+        string praefix = bisher.Length > 0 && !char.IsWhiteSpace(bisher[^1]) ? " " : string.Empty;
+        string suffix = text[^1] is '.' or '!' or '?' or ':' ? " " : ". ";
+        z.KommentarVomEditor(new List<TextLauf> { new(bisher + praefix + text + suffix) });
+        Neuzeichnen();
         return true;
     }
 
@@ -445,14 +464,16 @@
 
     // ---------- Datensicherung ----------
 
-    void SicherungHerunterladen()
+    async Task SicherungHerunterladen()
     {
+        if (Plattform is not IBrowserSicherung s) return;
         _vm?.Autosave(erzwingen: true);
-        Ui.Herunterladen($"Gutachtentool-Sicherung-{DateTime.Now:yyyy-MM-dd-HHmm}.zip", Speicher.SicherungErstellen());
+        await Ui.AusgebenAsync($"Gutachtentool-Sicherung-{DateTime.Now:yyyy-MM-dd-HHmm}.zip", s.SicherungErstellen());
     }
 
     async Task SicherungEinspielenAsync()
     {
+        if (Plattform is not IBrowserSicherung s) return;
         string? pfad = await Ui.DateiWaehlenAsync(".zip");
         if (pfad is null) return;
         bool ok = await Ui.BestaetigenAsync("Sicherung einspielen",
@@ -462,8 +483,8 @@
         try
         {
             _takt?.Dispose();
-            await Speicher.SicherungEinspielenAsync(pfad);
-            await Js.InvokeVoidAsync("gutachtentool.neuLaden");
+            await s.SicherungEinspielenAsync(pfad);
+            await s.NeuLadenAsync();
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException)
         {

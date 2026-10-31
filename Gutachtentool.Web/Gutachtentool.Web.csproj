@@ -25,10 +25,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Gutachten2025.Core\Gutachten2025.Core.csproj" />
+    <ProjectReference Include="..\Gutachtentool.Oberflaeche\Gutachtentool.Oberflaeche.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <TrimmerRootAssembly Include="Gutachten2025.Core" />
+    <TrimmerRootAssembly Include="Gutachtentool.Oberflaeche" />
     <TrimmerRootAssembly Include="DocumentFormat.OpenXml" />
     <TrimmerRootAssembly Include="DocumentFormat.OpenXml.Framework" />
   </ItemGroup>
