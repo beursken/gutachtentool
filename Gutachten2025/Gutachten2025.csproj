@@ -1,0 +1,120 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+  <OutputType>WinExe</OutputType>
+  <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
+  <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+  <RootNamespace>Gutachten2025</RootNamespace>
+  <!-- Versionsnummer für das Installationsprogramm (Installer\Erstellen.ps1 liest sie aus der EXE). -->
+  <Version>1.3.0</Version>
+  <Product>Gutachtentool</Product>
+  <Company>Universität Passau</Company>
+  <ApplicationManifest>app.manifest</ApplicationManifest>
+  <Platforms>x86;x64;ARM64</Platforms>
+  <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+  <UseWinUI>true</UseWinUI>
+  <Nullable>enable</Nullable>
+  <EnableMsixTooling>true</EnableMsixTooling>
+  <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  <Platforms>x64;ARM64</Platforms>
+  <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+  <!-- Verteilung über das Inno-Setup (Installer\Erstellen.ps1); das MSIX-Paket wird nicht signiert.
+       Früher: Zertifikat 4BE06EB403EB4A343991401DDFD0411502913141 (nicht mehr im Zertifikatspeicher). -->
+  <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+  <AppxBundle>Always</AppxBundle>
+  <AppxBundlePlatforms>x64</AppxBundlePlatforms>
+  <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+  <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+  <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  <!-- Eigener Einstiegspunkt in Program.cs (Einzelinstanz, Übergabe von .gtpaket-Dateien). -->
+  <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  <!-- Nur deutsche/englische Sprachressourcen von NuGet-Paketen mitliefern. -->
+  <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+</PropertyGroup>
+<ItemGroup>
+  <None Remove="Images\LockScreenLogo.scale-200.png" />
+  <None Remove="Images\SplashScreen.scale-200.png" />
+  <None Remove="Images\Square150x150Logo.scale-200.png" />
+  <None Remove="Images\Square44x44Logo.scale-200.png" />
+  <None Remove="Images\Square44x44Logo.targetsize-24_altform-unplated.png" />
+  <None Remove="Images\StoreLogo.png" />
+  <None Remove="Images\Wide310x150Logo.scale-200.png" />
+</ItemGroup>
+  <ItemGroup>
+    <Content Include="Images\Square150x150Logo.scale-200.png" />
+    <Content Include="Images\Square44x44Logo.scale-200.png" />
+    <Content Include="Images\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Images\StoreLogo.png" />
+    <Content Include="Images\Wide310x150Logo.scale-200.png" />
+    <Content Include="gutachten.ico" />
+  </ItemGroup>
+
+  <!-- Modelle, ViewModel und Dienste liegen in Gutachten2025.Core (gemeinsam mit Mac- und Browser-Fassung).
+       Die früheren Ordner werden nicht mehr übersetzt, falls sie noch vorhanden sind. -->
+  <ItemGroup>
+    <Compile Remove="Models\**;Services\**;ViewModels\**;Rohpunkte\**" />
+    <None Remove="Models\**;Services\**;ViewModels\**;Rohpunkte\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Gutachten2025.Core\Gutachten2025.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Common" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.LayoutTransformControl" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Primitives" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
+    <!-- Word und Excel: Microsoft Open XML SDK (wie im KI-Portal) -->
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <!-- Metapaket bleibt nötig: CommunityToolkit.WinUI verlangt es, sonst zieht NuGet die alte Version 1.6 nach. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+  </ItemGroup>
+
+  <!-- KI-, ML-, Such- und Widget-Bestandteile des Windows App SDK werden nicht genutzt (u. a. onnxruntime.dll, DirectML.dll, ca. 58 MB).
+       Ausschluss abschalten mit <OhneKiKomponenten>false</OhneKiKomponenten>, falls Build oder Start damit Probleme machen. -->
+  <ItemGroup Condition="'$(OhneKiKomponenten)' != 'false'">
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" Version="2.5.5" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" Version="2.1.94" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Search" Version="2.5.5" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" Version="2.0.5" ExcludeAssets="all" />
+  </ItemGroup>
+
+  <!-- Programmvorlagen: werden beim ersten Start in den Ablageordner (Vorlagen) kopiert (KlausurAblage.Einrichten). -->
+  <ItemGroup>
+    <!-- Quelle: Gutachten2025.Core\Vorlagen (dort auch eingebettet; die Dateien hier haben Vorrang). -->
+    <Content Include="..\Gutachten2025.Core\Vorlagen\MUSTER.docx" Link="MUSTER.docx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachten2025.Core\Vorlagen\MUSTER.xlsx" Link="MUSTER.xlsx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Gutachten2025.Core\Vorlagen\Texte.txt" Link="Texte.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Excel-Vorlage für Rohpunkteschemata (aus dem KI-Portal, Content/Muster.xlsx) -->
+    <Content Include="..\Gutachten2025.Core\Vorlagen\Rohpunkte-Muster.xlsx" Link="Rohpunkte-Muster.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\LockScreenLogo.scale-200.png" />
+    <Content Include="Images\SplashScreen.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Veranstaltungskopie\IcoGen\bin\Release\net10.0\publish\Symbol Gross.jpg">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+    <!-- Publish Properties -->
+  <PropertyGroup>
+<PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+<PublishTrimmed Condition="'$(Configuration)' != 'Debug'">False</PublishTrimmed>
+    <ApplicationIcon>gutachten.ico</ApplicationIcon>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <GenerateTestArtifacts>False</GenerateTestArtifacts>
+    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+    <PackageIcon>Symbol Gross.jpg</PackageIcon>
+  </PropertyGroup>
+</Project>

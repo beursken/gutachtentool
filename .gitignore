@@ -1,0 +1,15 @@
+# Build
+bin/
+obj/
+publish/
+Installer/Ausgabe/
+Installer/publish/
+**/AppPackages/
+**/BundleArtifacts/
+*.user
+.vs/
+# Sicherungen und lokale Dateien
+Sicherung_*/
+*.CER
+*.pfx
+*.p12

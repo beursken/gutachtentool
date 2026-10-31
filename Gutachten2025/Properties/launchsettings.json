@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Gutachten2025 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Gutachten2025 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Gemeinsamer Kern des Gutachtentools ohne Oberfläche: Modelle, ViewModel, Word/Excel, Pakete.
+       Genutzt von Gutachten2025 (Windows, WinUI 3), Gutachtentool.Mac (Avalonia) und Gutachtentool.Web (Blazor WebAssembly). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Gutachten2025</RootNamespace>
+    <AssemblyName>Gutachten2025.Core</AssemblyName>
+    <Nullable>enable</Nullable>
+    <Version>1.3.0</Version>
+    <Product>Gutachtentool</Product>
+    <Company>Universität Passau</Company>
+    <!-- Für die Browser-Fassung: Trimmen nur mit Analyse, damit Reflection-Lücken auffallen. -->
+    <IsTrimmable>false</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+  </ItemGroup>
+
+  <!-- Programmvorlagen (Programmvorlagen.cs): fester Ressourcenname „Gutachten2025.Vorlagen.<Datei>“. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Vorlagen\*.*" LogicalName="Gutachten2025.Vorlagen.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

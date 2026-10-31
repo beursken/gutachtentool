@@ -1,0 +1,849 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Gutachten2025.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Gutachten2025"
+    xmlns:models="using:Gutachten2025.Models"
+    xmlns:rp="using:Gutachten2025.Rohpunkte"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    Activated="Window_Activated"
+    Closed="Window_Closed"
+    mc:Ignorable="d">
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt"/>
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="Wurzel" Loaded="Wurzel_Loaded" PreviewKeyDown="Wurzel_PreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Unsichtbare Farbquellen (thema-abhängig) für im Code gesetzte Hintergründe -->
+        <Border x:Name="Farben" Visibility="Collapsed"
+                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"/>
+
+        <!-- ===== Titelleiste ===== -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftPaddingColumn" Width="5"/>
+                <ColumnDefinition x:Name="IconColumn" Width="Auto"/>
+                <ColumnDefinition x:Name="TitleColumn" Width="Auto"/>
+                <ColumnDefinition x:Name="LeftDragColumn" Width="*"/>
+                <ColumnDefinition x:Name="SearchColumn" Width="4*" MinWidth="220"/>
+                <ColumnDefinition x:Name="ButtonColumn" Width="Auto"/>
+                <ColumnDefinition x:Name="RightDragColumn" Width="*" MinWidth="48"/>
+                <ColumnDefinition x:Name="RightPaddingColumn" Width="100"/>
+            </Grid.ColumnDefinitions>
+            <Image x:Name="TitleBarIcon" Source="ms-appx:///Assets/Square44x44.png"
+                   Grid.Column="1" Width="16" Height="16" Margin="8,0,4,0"/>
+            <TextBlock x:Name="TitleBarTextBlock" Text="Gutachtentool"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Grid.Column="2" VerticalAlignment="Center"/>
+
+            <ComboBox x:Name="Klausur" Grid.Column="4" Margin="7"
+                      IsEditable="True" PlaceholderText="Klausur wählen oder neuen Namen eingeben"
+                      ToolTipService.ToolTip="Klausur wählen oder neuen Namen eingeben (Eingabetaste)"
+                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      ItemsSource="{x:Bind ViewModel.Klausuren}"
+                      SelectionChanged="Klausur_SelectionChanged"
+                      TextSubmitted="Klausur_TextSubmitted"/>
+
+            <StackPanel x:Name="TitelKnoepfe" Grid.Column="5" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <SplitButton x:Name="Folder" Command="{x:Bind ViewModel.OrdnerOeffnenCommand}"
+                             ToolTipService.ToolTip="Klausurordner öffnen · Pfeil: Dateien, Vorlagen, Pakete">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="16" Glyph="&#xED25;"/>
+                        <TextBlock Text="Ordner"/>
+                    </StackPanel>
+                    <SplitButton.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuFlyoutItem Text="Notenliste" Command="{x:Bind ViewModel.NotenlisteOeffnenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE9F9;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Erwartungshorizont öffnen" Command="{x:Bind ViewModel.ErwartungshorizontOeffnenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Alle Gutachten drucken…" Command="{x:Bind ViewModel.AlleDruckenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE749;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Klausureinstellungen (Formalkriterien, Aufgaben)…" Command="{x:Bind ViewModel.KonfigurationBearbeitenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE713;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Teilnehmendenliste importieren…" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE716;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Rohpunkteschema in Excel bearbeiten" Command="{x:Bind ViewModel.RohpunkteInExcelBearbeitenCommand}"
+                                            ToolTipService.ToolTip="rohpunkte.xlsx im Layout des KI-Portals; wird nach dem Speichern übernommen">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE9F9;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Rohpunkteschema importieren…" Command="{x:Bind ViewModel.RohpunkteImportierenCommand}"
+                                            ToolTipService.ToolTip="rohpunkte.json oder rohpunkte.xlsx aus dem KI-Portal"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Word-Vorlage bearbeiten" Command="{x:Bind ViewModel.VorlageBearbeitenCommand}"/>
+                            <MenuFlyoutItem Text="Word-Vorlage importieren…" Command="{x:Bind ViewModel.VorlageImportierenCommand}"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Formulierungsdatei bearbeiten" Command="{x:Bind ViewModel.FormulierungenBearbeitenCommand}"/>
+                            <MenuFlyoutItem Text="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8B5;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Klausur als Paket exportieren…" Command="{x:Bind ViewModel.PaketExportierenCommand}"
+                                            ToolTipService.ToolTip="Ohne Noten, Gutachten, Entwürfe und Teilnehmende">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xEDE1;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </SplitButton.Flyout>
+                </SplitButton>
+                <Button x:Name="EinstellungenKnopf" Click="Einstellungen_Click" Padding="8,5"
+                        ToolTipService.ToolTip="Einstellungen: Darstellung, Schrift, Verhalten, Ablageordner">
+                    <FontIcon FontSize="16" Glyph="&#xE713;"/>
+                </Button>
+                <Button x:Name="HilfeKnopf" Click="Hilfe_Click" Padding="8,5"
+                        ToolTipService.ToolTip="Hilfe und Tastenkürzel (F1)">
+                    <FontIcon FontSize="16" Glyph="&#xE897;"/>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ===== Inhalt (skalierbar) ===== -->
+        <controls:LayoutTransformControl x:Name="Skalierung" Grid.Row="1">
+            <controls:LayoutTransformControl.Transform>
+                <ScaleTransform x:Name="Skala" ScaleX="1" ScaleY="1"/>
+            </controls:LayoutTransformControl.Transform>
+
+            <Grid x:Name="Inhalt">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Warnungen und Fehler -->
+                <InfoBar x:Name="Meldung" Grid.Row="0" Margin="12,4,12,0" IsOpen="False" IsClosable="True"/>
+
+                <Grid x:Name="Koerper" Grid.Row="1" SizeChanged="Koerper_SizeChanged">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="SpalteLinks" Width="340"/>
+                        <ColumnDefinition x:Name="SpalteMitte" Width="*" MinWidth="360"/>
+                        <ColumnDefinition x:Name="SpalteRechts" Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ===== Bausteine (links oder über dem Editor; schmal: überlagernd) ===== -->
+                    <Border x:Name="BausteinBereich" Grid.Column="0" Padding="12,8,12,8" BorderThickness="0,1,1,0"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            SizeChanged="BausteinBereich_SizeChanged">
+                        <Grid RowSpacing="6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Bausteine" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.NeueGruppeOhneBezugCommand}"
+                                            ToolTipService.ToolTip="Neue Gruppe am Ende (Unterebenen: Rechtsklick auf eine Gruppe oder Ziehen)">
+                                        <FontIcon FontSize="16" Glyph="&#xE8F4;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.NeuerBausteinOhneBezugCommand}"
+                                            ToolTipService.ToolTip="Neuer Baustein (Strg+S mit markiertem Text im Editor)">
+                                        <FontIcon FontSize="16" Glyph="&#xE710;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.BausteinRueckgaengigCommand}"
+                                            ToolTipService.ToolTip="Letzte Änderung an den Bausteinen rückgängig (Strg+Z im Baum)">
+                                        <FontIcon FontSize="16" Glyph="&#xE7A7;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Click="BausteineSchliessen_Click"
+                                            ToolTipService.ToolTip="Bausteinliste ausblenden (F6)">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A0;"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <AutoSuggestBox x:Name="Suche" Grid.Row="1" QueryIcon="Find"
+                                            PlaceholderText="Suchen (Strg+F) – Text, #Kürzel oder Nummer"
+                                            ToolTipService.ToolTip="Suche in Text, Kürzel und Nummer · Eingabetaste: ersten Treffer einfügen · Esc: Suche beenden"
+                                            Text="{x:Bind ViewModel.Suchtext, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            QuerySubmitted="Suche_QuerySubmitted"/>
+
+                            <TreeView x:Name="Texte" Grid.Row="2"
+                                      ItemsSource="{x:Bind ViewModel.BaumQuelle, Mode=OneWay}"
+                                      CanDragItems="True"
+                                      CanReorderItems="{x:Bind ViewModel.Umsortierbar, Mode=OneWay}"
+                                      AllowDrop="{x:Bind ViewModel.Umsortierbar, Mode=OneWay}"
+                                      ItemInvoked="Texte_ItemInvoked"
+                                      DragItemsStarting="Texte_DragItemsStarting"
+                                      DragItemsCompleted="Texte_DragItemsCompleted"
+                                      KeyDown="Texte_KeyDown">
+                                <TreeView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Baustein">
+                                        <TreeViewItem ItemsSource="{x:Bind Children}"
+                                                      IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                                      ToolTipService.ToolTip="{x:Bind Hinweis, Mode=OneWay}">
+                                            <Grid ColumnSpacing="6" Opacity="{x:Bind Deckkraft, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{x:Bind NrText, Mode=OneWay}" MinWidth="22" Opacity="0.45"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                                                <TextBlock Grid.Column="1" Text="{x:Bind Text, Mode=OneWay}" TextWrapping="WrapWholeWords"
+                                                           FontWeight="{x:Bind local:Darstellung.Gewicht(IstGruppe), Mode=OneWay}"
+                                                           local:Hervorhebung.Begriffe="{x:Bind Suchbegriffe, Mode=OneWay}"/>
+                                                <Border Grid.Column="2" Padding="6,0" CornerRadius="8" VerticalAlignment="Center"
+                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                        Visibility="{x:Bind IstGruppe, Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind AnzahlText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.75"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="3" Text="{x:Bind KuerzelText, Mode=OneWay}" VerticalAlignment="Center"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"
+                                                           Visibility="{x:Bind HatKuerzel, Mode=OneWay}"/>
+                                                <Border Grid.Column="4" Padding="6,0" CornerRadius="4" VerticalAlignment="Center"
+                                                        Background="{x:Bind local:MainWindow.BereichFarbe(BereichArt), Mode=OneWay}"
+                                                        Visibility="{x:Bind HatBereich, Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind Bereich, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                                </Border>
+                                            </Grid>
+                                            <TreeViewItem.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="Bearbeiten… (F2)" Tag="{x:Bind}" Click="BausteinBearbeiten_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE70F;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Neuer Baustein hier…" Tag="{x:Bind}" Click="BausteinNeu_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE710;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Neue Gruppe hier…" Tag="{x:Bind}" Click="GruppeNeu_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8F4;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutSeparator/>
+                                                    <MenuFlyoutItem Text="Löschen (Entf)" Tag="{x:Bind}" Click="BausteinLoeschen_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </TreeViewItem.ContextFlyout>
+                                        </TreeViewItem>
+                                    </DataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+
+                            <!-- Leere Zustände der Bausteinliste -->
+                            <StackPanel Grid.Row="2" Spacing="8" Margin="4,16" VerticalAlignment="Top"
+                                        Visibility="{x:Bind ViewModel.KeineBausteine, Mode=OneWay}">
+                                <TextBlock Text="Noch keine Bausteine" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                                           Text="Formulierungen anlegen, eine Formulierungsdatei übernehmen oder ein Paket (z. B. aus dem KI-Portal) importieren."/>
+                                <Button Content="Neuer Baustein…" Command="{x:Bind ViewModel.NeuerBausteinOhneBezugCommand}"/>
+                                <Button Content="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
+                                <Button Content="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="2" Margin="4,16" Text="Keine Treffer." Opacity="0.7" VerticalAlignment="Top"
+                                       Visibility="{x:Bind ViewModel.KeineTreffer, Mode=OneWay}"/>
+                        </Grid>
+                    </Border>
+
+                    <controls:GridSplitter x:Name="SplitterSpalten" Grid.Column="1" Width="12" Cursor="Hand"
+                                           ResizeDirection="Columns" ResizeBehavior="PreviousAndCurrent"
+                                           VerticalAlignment="Stretch" HorizontalAlignment="Left">
+                        <controls:GridSplitter.RenderTransform>
+                            <TranslateTransform X="-6"/>
+                        </controls:GridSplitter.RenderTransform>
+                    </controls:GridSplitter>
+
+                    <!-- ===== Arbeitsbereich ===== -->
+                    <Grid x:Name="Arbeitsbereich" Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition x:Name="ZeileKopf" Height="Auto"/>
+                            <RowDefinition x:Name="ZeileOben" Height="0"/>
+                            <RowDefinition x:Name="ZeileEditor" Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Kopf: zwei Karten -->
+                        <Grid x:Name="KopfBereich" Grid.Row="0" Padding="12,8,12,4" ColumnSpacing="12" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition x:Name="KopfSpalte1" Width="*"/>
+                                <ColumnDefinition x:Name="KopfSpalte2" Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Border x:Name="ArbeitKarte" Grid.Column="0" Padding="14,10" CornerRadius="8" BorderThickness="1"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                <StackPanel Spacing="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Arbeit" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                        <CheckBox x:Name="Anonym" Grid.Column="1" Content="Anonymisiert" MinWidth="0" Padding="6,0,0,0"
+                                                  ToolTipService.ToolTip="Anonymisiert: Kennziffer statt Name und Matrikelnummer"
+                                                  IsChecked="{x:Bind ViewModel.Anonym, Mode=TwoWay}"/>
+                                    </Grid>
+                                    <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8">
+                                        <AutoSuggestBox x:Name="Student" Width="200"
+                                                        Header="{x:Bind ViewModel.KennungsBezeichnung, Mode=OneWay}"
+                                                        UpdateTextOnSelect="False"
+                                                        PlaceholderText="z. B. K17"
+                                                        ToolTipService.ToolTip="Mit importierter Teilnehmendenliste werden Vorschläge angezeigt"
+                                                        Text="{x:Bind ViewModel.Student, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        TextChanged="Student_TextChanged"
+                                                        SuggestionChosen="Student_SuggestionChosen"/>
+                                        <TextBox x:Name="Matrikel" Width="140" Header="Matrikelnummer"
+                                                 Visibility="{x:Bind ViewModel.MatrikelSichtbar, Mode=OneWay}"
+                                                 Text="{x:Bind ViewModel.Matrikel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <ComboBox x:Name="Grade" Header="Note" MinWidth="180"
+                                                  ToolTipService.ToolTip="Bausteine mit unpassendem Punktebereich werden abgeblendet"
+                                                  ItemsSource="{x:Bind ViewModel.NotenAuswahl}"
+                                                  SelectedIndex="{x:Bind ViewModel.NotenIndex, Mode=TwoWay}"/>
+                                        <NumberBox x:Name="Seiten" Header="Seiten" Width="110"
+                                                   Minimum="0" Maximum="80" SpinButtonPlacementMode="Compact"
+                                                   Value="{x:Bind ViewModel.Seiten, Mode=TwoWay}"/>
+                                    </controls:WrapPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.NoteAbweichend, Mode=OneWay}">
+                                        <FontIcon FontSize="14" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+                                        <TextBlock Text="{x:Bind ViewModel.NotenHinweis, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                        <HyperlinkButton Content="Übernehmen" Padding="4,0" Command="{x:Bind ViewModel.ErrechneteNoteUebernehmenCommand}"
+                                                         ToolTipService.ToolTip="Note entsprechend den Rohpunkten setzen"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{x:Bind ViewModel.BearbeitungsHinweis, Mode=OneWay}" TextWrapping="Wrap"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                               Visibility="{x:Bind ViewModel.InBearbeitung, Mode=OneWay}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="BewertungKarte" Grid.Column="1" Padding="14,10" CornerRadius="8" BorderThickness="1"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Bewertung" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                              IsExpanded="{x:Bind ViewModel.KriterienAufgeklappt, Mode=TwoWay}">
+                                        <Expander.Header>
+                                            <StackPanel Padding="0,6">
+                                                <TextBlock Text="Formalkriterien"/>
+                                                <TextBlock Text="{x:Bind ViewModel.KriterienZusammenfassung, Mode=OneWay}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Expander.Header>
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.Kriterien}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:KriteriumAuswahl">
+                                                    <ComboBox Header="{x:Bind Name}" MinWidth="200" MaxWidth="360"
+                                                              ItemsSource="{x:Bind Optionen}"
+                                                              SelectedIndex="{x:Bind Index, Mode=TwoWay}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
+                                    <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.HatSchema, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{x:Bind ViewModel.RohpunkteStatus, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                        <Button Grid.Column="1" Content="Rohpunkte" Click="RohpunkteReiter_Click"
+                                                ToolTipService.ToolTip="Zum Reiter „Rohpunkte“ (Strg+2)"/>
+                                    </Grid>
+                                    <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.TeilpunkteSichtbar, Mode=OneWay}">
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.Aufgaben}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:AufgabenPunkte">
+                                                    <NumberBox Header="{x:Bind Kopf}" Width="130" Minimum="0" Maximum="{x:Bind Maximum}"
+                                                               SmallChange="0.5" LargeChange="1" SpinButtonPlacementMode="Compact"
+                                                               AcceptsExpression="True" PlaceholderText="Punkte"
+                                                               Value="{x:Bind Punkte, Mode=TwoWay}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind ViewModel.PunkteText, Mode=OneWay}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"/>
+                                            <Button Grid.Column="1" Content="Vorschlag übernehmen" Command="{x:Bind ViewModel.NotenvorschlagUebernehmenCommand}"
+                                                    ToolTipService.ToolTip="Note entsprechend der Rohpunktsumme setzen"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <controls:GridSplitter x:Name="SplitterZeilen" Grid.Row="2" Height="12" Cursor="Hand" Visibility="Collapsed"
+                                               ResizeDirection="Rows" ResizeBehavior="PreviousAndCurrent"
+                                               VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                            <controls:GridSplitter.RenderTransform>
+                                <TranslateTransform Y="-6"/>
+                            </controls:GridSplitter.RenderTransform>
+                        </controls:GridSplitter>
+
+                        <!-- Editor mit Befehlsleiste und Statusleiste -->
+                        <Grid x:Name="EditorBereich" Grid.Row="2" Padding="12,4,12,8" RowSpacing="4">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Symbolleiste: links Bausteine, Reiter, Befehle, rechts Übersicht -->
+                            <Grid x:Name="Symbolleiste" Grid.Row="0" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ToggleButton x:Name="BausteineKnopf" Grid.Column="0" VerticalAlignment="Center" Padding="8,5"
+                                              IsChecked="{x:Bind ViewModel.BausteineOffen, Mode=TwoWay}"
+                                              ToolTipService.ToolTip="Seitenleiste „Bausteine“ links ein-/ausblenden (F6)">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontSize="16" Glyph="&#xE90C;"/>
+                                        <TextBlock Text="Bausteine"/>
+                                    </StackPanel>
+                                </ToggleButton>
+                                <SelectorBar x:Name="Reiter" Grid.Column="1" VerticalAlignment="Center" SelectionChanged="Reiter_SelectionChanged">
+                                    <SelectorBarItem x:Name="ReiterGutachten" Text="Gutachten" IsSelected="True"
+                                                     ToolTipService.ToolTip="Gutachtentext (Strg+1)">
+                                        <SelectorBarItem.Icon><FontIcon Glyph="&#xE8A5;"/></SelectorBarItem.Icon>
+                                    </SelectorBarItem>
+                                    <SelectorBarItem x:Name="ReiterRohpunkte" Text="Rohpunkte"
+                                                     ToolTipService.ToolTip="Rohpunkte je Prüfungsstation mit Kommentar (Strg+2)">
+                                        <SelectorBarItem.Icon><FontIcon Glyph="&#xE9D2;"/></SelectorBarItem.Icon>
+                                    </SelectorBarItem>
+                                </SelectorBar>
+                                <ToggleButton x:Name="UebersichtKnopf" Grid.Column="3" VerticalAlignment="Center" Padding="8,5"
+                                              IsChecked="{x:Bind ViewModel.SeitenleisteOffen, Mode=TwoWay}"
+                                              ToolTipService.ToolTip="Seitenleiste „Übersicht“ rechts ein-/ausblenden (F9)">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="Übersicht"/>
+                                        <FontIcon FontSize="16" Glyph="&#xE90D;"/>
+                                    </StackPanel>
+                                </ToggleButton>
+                            <CommandBar x:Name="EditorLeiste" Grid.Column="2" HorizontalAlignment="Left" DefaultLabelPosition="Collapsed"
+                                        IsDynamicOverflowEnabled="True" Background="Transparent">
+                                <AppBarButton Label="Rückgängig" Click="EditorRueckgaengig_Click" ToolTipService.ToolTip="Texteingabe rückgängig (Strg+Z)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE7A7;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarButton Label="Wiederholen" Click="EditorWiederholen_Click" ToolTipService.ToolTip="Wiederholen (Strg+Y)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE7A6;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarButton Label="Fett" Click="Fett_Click" ToolTipService.ToolTip="Fett (Strg+B) – wird in Word übernommen">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE8DD;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarButton Label="Kursiv" Click="Kursiv_Click" ToolTipService.ToolTip="Kursiv (Strg+I) – wird in Word übernommen">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE8DB;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarSeparator/>
+                                <AppBarButton Label="Neue Arbeit" Click="NeueArbeit_Click"
+                                              ToolTipService.ToolTip="Neue Arbeit: Eingaben und Entwurf leeren (Strg+N, rückgängig möglich)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE8E5;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarSeparator/>
+                                <AppBarButton x:Name="DiktatKnopf" Label="Diktieren" Click="Diktat_Click"
+                                              ToolTipService.ToolTip="Diktieren mit der Windows-Spracheingabe (F8 bzw. Win+H)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE720;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarToggleButton Label="Satzvorschläge" IsChecked="{x:Bind ViewModel.Satzvorschlaege, Mode=TwoWay}"
+                                                    ToolTipService.ToolTip="Satzvorschläge beim Tippen (Tab: übernehmen, Strg+Leertaste: nächster, Esc: verwerfen)">
+                                    <AppBarToggleButton.Icon><FontIcon FontSize="16" Glyph="&#xE82F;"/></AppBarToggleButton.Icon>
+                                </AppBarToggleButton>
+                                <AppBarSeparator/>
+                                <AppBarButton Label="Verkleinern" Click="ZoomMinus_Click" ToolTipService.ToolTip="Verkleinern (Strg+Minus, Strg+Mausrad)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE71F;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarElementContainer VerticalContentAlignment="Center">
+                                    <Button x:Name="ZoomAnzeige" Padding="6,4" MinWidth="58" Click="ZoomZurueck_Click"
+                                            Background="Transparent" BorderThickness="0"
+                                            ToolTipService.ToolTip="Zoom zurücksetzen (Strg+0)" Content="100 %"/>
+                                </AppBarElementContainer>
+                                <AppBarButton Label="Vergrößern" Click="ZoomPlus_Click" ToolTipService.ToolTip="Vergrößern (Strg+Plus, Strg+Mausrad)">
+                                    <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE8A3;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <AppBarSeparator/>
+                                <AppBarToggleButton x:Name="FokusKnopf" Label="Fokusmodus" Click="Fokus_Click"
+                                                    ToolTipService.ToolTip="Fokusmodus: nur der Editor (Strg+Umschalt+F, Esc beendet)">
+                                    <AppBarToggleButton.Icon><FontIcon FontSize="16" Glyph="&#xE7B3;"/></AppBarToggleButton.Icon>
+                                </AppBarToggleButton>
+                                <AppBarButton x:Name="VollbildKnopf" Label="Vollbild" Click="Vollbild_Click" ToolTipService.ToolTip="Vollbild (F11)">
+                                    <AppBarButton.Icon><FontIcon x:Name="VollbildSymbol" FontSize="16" Glyph="&#xE740;"/></AppBarButton.Icon>
+                                </AppBarButton>
+                                <CommandBar.SecondaryCommands>
+                                    <AppBarToggleButton Label="Bausteine über dem Editor" IsChecked="{x:Bind ViewModel.BausteineOben, Mode=TwoWay}">
+                                        <AppBarToggleButton.Icon><FontIcon FontSize="16" Glyph="&#xE90E;"/></AppBarToggleButton.Icon>
+                                    </AppBarToggleButton>
+                                    <AppBarButton Label="Alle Gutachten drucken…" Command="{x:Bind ViewModel.AlleDruckenCommand}">
+                                        <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE749;"/></AppBarButton.Icon>
+                                    </AppBarButton>
+                                    <AppBarButton Label="Einstellungen…" Click="Einstellungen_Click">
+                                        <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE713;"/></AppBarButton.Icon>
+                                    </AppBarButton>
+                                    <AppBarButton Label="Hilfe und Tastenkürzel (F1)" Click="Hilfe_Click">
+                                        <AppBarButton.Icon><FontIcon FontSize="16" Glyph="&#xE897;"/></AppBarButton.Icon>
+                                    </AppBarButton>
+                                </CommandBar.SecondaryCommands>
+                            </CommandBar>
+                            </Grid>
+
+                            <!-- Editorfläche -->
+                            <Grid x:Name="EditorFlaeche" Grid.Row="1" CornerRadius="8" BorderThickness="1"
+                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                <RichEditBox x:Name="Main" Padding="24,20" BorderThickness="0" Background="Transparent"
+                                             IsSpellCheckEnabled="True" IsTextPredictionEnabled="True" Language="de-DE"
+                                             AllowDrop="True"
+                                             PlaceholderText="Gutachtentext – Bausteine per Klick, Ziehen, Alt+Nummer, Kürzel + Tab oder Satzvorschlag einfügen"
+                                             PreviewKeyDown="Main_PreviewKeyDown"
+                                             KeyDown="Main_KeyDown" KeyUp="Main_KeyUp"
+                                             TextChanged="Main_TextChanged" LostFocus="Main_LostFocus"
+                                             SelectionChanged="Main_SelectionChanged"/>
+                                <!-- Satzvorschlag: grau an der Schreibmarke bzw. als Hinweis unter der Zeile -->
+                                <Canvas x:Name="VorschlagEbene" IsHitTestVisible="False">
+                                    <Border x:Name="VorschlagRahmen" Visibility="Collapsed" CornerRadius="4">
+                                        <TextBlock x:Name="VorschlagText" TextWrapping="Wrap" Opacity="0.55"/>
+                                    </Border>
+                                </Canvas>
+                                <!-- Leerer Zustand: keine Klausur -->
+                                <Grid Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                      Visibility="{x:Bind ViewModel.KeineKlausur, Mode=OneWay}">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="420">
+                                        <FontIcon FontSize="40" Glyph="&#xE8F1;" Opacity="0.6"/>
+                                        <TextBlock Text="Noch keine Klausur gewählt" HorizontalAlignment="Center"
+                                                   Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                        <TextBlock TextWrapping="Wrap" TextAlignment="Center" Opacity="0.75"
+                                                   Text="Oben einen Namen für die Klausur eingeben und die Eingabetaste drücken – oder ein vorbereitetes Paket importieren."/>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <Button Style="{StaticResource AccentButtonStyle}" Content="Klausur anlegen" Click="KlausurAnlegen_Click"/>
+                                            <Button Content="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
+                                            <Button Content="Ablageordner…" Command="{x:Bind ViewModel.AblageordnerWaehlenCommand}"
+                                                    ToolTipService.ToolTip="Vorhandene Klausuren liegen in einem anderen Ordner"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Reiter „Rohpunkte“ -->
+                            <Grid x:Name="RohpunkteFlaeche" Grid.Row="1" CornerRadius="8" BorderThickness="1" Visibility="Collapsed"
+                                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Padding="20,10,32,8" ColumnSpacing="12" BorderThickness="0,0,0,1"
+                                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="190"/>
+                                        <ColumnDefinition Width="3*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Prüfungsstation" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <TextBlock Grid.Column="1" Text="Punkte" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <TextBlock Grid.Column="2" Text="Kommentar" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                </Grid>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="8,4,20,8">
+                                    <ItemsControl x:Name="RohpunkteListe" ItemsSource="{x:Bind ViewModel.Rohpunktzeilen}" IsTabStop="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="rp:RohpunktZeile">
+                                                <Border Padding="12,6" Margin="0,1" CornerRadius="4" Background="{x:Bind local:MainWindow.ZeilenFarbe(Art)}">
+                                                    <Grid ColumnSpacing="12">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="2*"/>
+                                                            <ColumnDefinition Width="190"/>
+                                                            <ColumnDefinition Width="3*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid Margin="{x:Bind local:Darstellung.Links(EinrueckungLinks)}" ColumnSpacing="6" VerticalAlignment="Center"
+                                                              ToolTipService.ToolTip="{x:Bind Tooltip}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{x:Bind Titel}" FontWeight="{x:Bind local:Darstellung.Gewicht(Fett)}" TextWrapping="Wrap"
+                                                                           IsTextSelectionEnabled="True"/>
+                                                                <TextBlock Text="{x:Bind Etiketten}" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"
+                                                                           TextWrapping="Wrap" Visibility="{x:Bind HatEtiketten}"/>
+                                                            </StackPanel>
+                                                            <FontIcon Grid.Column="1" FontSize="14" Glyph="&#xE946;" Opacity="0.7" VerticalAlignment="Top" Margin="0,3,0,0"
+                                                                      Visibility="{x:Bind HatHinweis}"/>
+                                                        </Grid>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top"
+                                                                    Visibility="{x:Bind IstEingabe}">
+                                                            <NumberBox Width="104" Minimum="0" Maximum="{x:Bind Max}" SmallChange="0.25" LargeChange="1"
+                                                                       SpinButtonPlacementMode="Compact" PlaceholderText="–"
+                                                                       NumberFormatter="{x:Bind local:MainWindow.Viertelformat}"
+                                                                       Value="{x:Bind Punkte, Mode=TwoWay}"/>
+                                                            <TextBlock Text="{x:Bind MaxText}" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap" MaxWidth="80"
+                                                                       Style="{StaticResource CaptionTextBlockStyle}"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind Zwischensumme, Mode=OneWay}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                                   Visibility="{x:Bind IstKopf}"/>
+                                                        <RichEditBox Grid.Column="2" MinHeight="34" TextWrapping="Wrap" AcceptsReturn="True"
+                                                                     IsSpellCheckEnabled="True" Language="de-DE" PlaceholderText="Kommentar"
+                                                                     Visibility="{x:Bind IstEingabe}"
+                                                                     local:Kommentarbindung.Zeile="{Binding}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Grid Grid.Row="2" Padding="20,8" ColumnSpacing="12" BorderThickness="0,1,0,0"
+                                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                      Visibility="{x:Bind ViewModel.HatSchema, Mode=OneWay}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{x:Bind ViewModel.RohpunkteStatus, Mode=OneWay}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{x:Bind ViewModel.NotenHinweis, Mode=OneWay}" TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                   Visibility="{x:Bind ViewModel.NoteAbweichend, Mode=OneWay}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Errechnete Note übernehmen" VerticalAlignment="Center"
+                                            Command="{x:Bind ViewModel.ErrechneteNoteUebernehmenCommand}"
+                                            Visibility="{x:Bind ViewModel.NoteAbweichend, Mode=OneWay}"/>
+                                    <Button Grid.Column="2" VerticalAlignment="Center" Padding="8,5"
+                                            Command="{x:Bind ViewModel.RohpunkteInExcelBearbeitenCommand}"
+                                            ToolTipService.ToolTip="Schema und Umrechnung in Excel bearbeiten">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon FontSize="16" Glyph="&#xE70F;"/>
+                                            <TextBlock Text="Schema bearbeiten"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <!-- Leerer Zustand: kein Schema -->
+                                <StackPanel Grid.RowSpan="3" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="460"
+                                            Visibility="{x:Bind ViewModel.KeinSchema, Mode=OneWay}">
+                                    <FontIcon FontSize="40" Glyph="&#xE9D2;" Opacity="0.6"/>
+                                    <TextBlock Text="Kein Rohpunkteschema" HorizontalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                                    <TextBlock TextWrapping="Wrap" TextAlignment="Center" Opacity="0.75"
+                                               Text="Ein Rohpunkteschema aus dem KI-Portal (rohpunkte.json oder rohpunkte.xlsx) importieren, mit einem Paket übernehmen oder in Excel neu anlegen."/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <Button Style="{StaticResource AccentButtonStyle}" Content="Rohpunkteschema importieren…"
+                                                Command="{x:Bind ViewModel.RohpunkteImportierenCommand}"/>
+                                        <Button Content="In Excel anlegen" Command="{x:Bind ViewModel.RohpunkteInExcelBearbeitenCommand}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Statusleiste mit Hauptaktion -->
+                            <Grid Grid.Row="2" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="StatusText" VerticalAlignment="Center" Opacity="0.75" TextTrimming="CharacterEllipsis"
+                                           Style="{StaticResource CaptionTextBlockStyle}"/>
+                                <TextBlock x:Name="WortZahl" Grid.Column="1" VerticalAlignment="Center" Opacity="0.75"
+                                           Style="{StaticResource CaptionTextBlockStyle}"/>
+                                <Button x:Name="Generate" Grid.Column="2" Style="{StaticResource AccentButtonStyle}" Padding="16,6"
+                                        ToolTipService.ToolTip="Gutachten erstellen und Note eintragen (Strg+Eingabe)"
+                                        Command="{x:Bind ViewModel.GenerierenCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A5;"/>
+                                        <TextBlock Text="Gutachten generieren"/>
+                                        <TextBlock Text="Strg+Eingabe" Opacity="0.7" VerticalAlignment="Center"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ===== Seitenleiste: Übersicht (schmal: überlagernd) ===== -->
+                    <Border x:Name="Seitenleiste" Grid.Column="2" Width="316" Padding="12,8,12,12"
+                            BorderThickness="1,1,0,0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Übersicht" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Padding="6,4" Command="{x:Bind ViewModel.UebersichtAktualisierenCommand}"
+                                        ToolTipService.ToolTip="Aus der Notenliste neu einlesen">
+                                    <FontIcon FontSize="16" Glyph="&#xE72C;"/>
+                                </Button>
+                                <Button Grid.Column="2" Padding="6,4" Click="UebersichtSchliessen_Click"
+                                        ToolTipService.ToolTip="Übersicht ausblenden (F9)">
+                                    <FontIcon FontSize="16" Glyph="&#xE89F;"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- Fortschritt -->
+                            <StackPanel Grid.Row="1" Spacing="4">
+                                <TextBlock Text="{x:Bind ViewModel.FortschrittText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                <ProgressBar Maximum="{x:Bind ViewModel.FortschrittMax, Mode=OneWay}" Value="{x:Bind ViewModel.Fortschritt, Mode=OneWay}"
+                                             Visibility="{x:Bind ViewModel.HatTeilnehmende, Mode=OneWay}"/>
+                            </StackPanel>
+
+                            <!-- Kennzahlen als Kacheln -->
+                            <ItemsControl Grid.Row="2" ItemsSource="{x:Bind ViewModel.Kennzahlen}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Kennzahl">
+                                        <Border Width="142" Padding="10,8" CornerRadius="6" BorderThickness="1"
+                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="{x:Bind Wert}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{x:Bind Bezeichnung}" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.75" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Notenverteilung mit Achse und Bestehensgrenze -->
+                            <Grid Grid.Row="3" HorizontalAlignment="Center"
+                                  ToolTipService.ToolTip="Notenverteilung 0–18 Punkte; gestrichelt: Bestehensgrenze (4 Punkte)">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.Verteilung}" HorizontalAlignment="Left">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="2"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:VerteilungsBalken">
+                                            <StackPanel Width="12" Spacing="2" ToolTipService.ToolTip="{x:Bind Hinweis}">
+                                                <Grid Height="58">
+                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                               Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="{x:Bind Bestanden}"/>
+                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                               Fill="{ThemeResource SystemFillColorCriticalBrush}" Visibility="{x:Bind NichtBestanden}"/>
+                                                </Grid>
+                                                <TextBlock Text="{x:Bind Beschriftung}" FontSize="10" HorizontalAlignment="Center" Opacity="0.7"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Rectangle Height="1" VerticalAlignment="Top" Margin="0,58,0,0" HorizontalAlignment="Stretch"
+                                           Fill="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                                <Line X1="0" Y1="0" X2="0" Y2="60" Margin="55,0,0,0" HorizontalAlignment="Left"
+                                      Stroke="{ThemeResource SystemFillColorCriticalBrush}" StrokeThickness="1" StrokeDashArray="2,2"/>
+                            </Grid>
+
+                            <StackPanel Grid.Row="4" Spacing="6">
+                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}"
+                                        ToolTipService.ToolTip="Excel- oder CSV-Datei mit Kennziffern bzw. Matrikelnummern (und Namen)">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE716;"/>
+                                        <TextBlock Text="Teilnehmendenliste importieren…"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{x:Bind ViewModel.TeilnehmendeHinweis, Mode=OneWay}" Opacity="0.7"
+                                           Style="{StaticResource CaptionTextBlockStyle}"/>
+                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AlleDruckenCommand}"
+                                        ToolTipService.ToolTip="Alle Gutachten der Klausur nacheinander auf dem Standarddrucker drucken">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE749;"/>
+                                        <TextBlock Text="Alle Gutachten drucken…"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <SelectorBar x:Name="Filter" Grid.Row="5" SelectionChanged="Filter_SelectionChanged">
+                                <SelectorBarItem Text="Alle" IsSelected="True"/>
+                                <SelectorBarItem Text="Offen"/>
+                                <SelectorBarItem Text="Bewertet"/>
+                            </SelectorBar>
+
+                            <ListView x:Name="Eintraege" Grid.Row="6" ItemsSource="{x:Bind ViewModel.Eintraege}"
+                                      SelectionMode="None" IsItemClickEnabled="True" ItemClick="Eintraege_ItemClick"
+                                      ToolTipService.ToolTip="Klick: bewertete Arbeit ändern bzw. offene Kennung übernehmen">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:UebersichtEintrag">
+                                        <Grid ColumnSpacing="8" Opacity="{x:Bind Deckkraft}" ToolTipService.ToolTip="{x:Bind Hinweis}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{x:Bind Anzeige}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Status}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Kurzmeldung (Erfolg/Information) unten rechts -->
+                <Border x:Name="Toast" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="0,0,24,64" Padding="14,10" CornerRadius="8" MaxWidth="460" BorderThickness="1"
+                        Visibility="Collapsed" Canvas.ZIndex="50"
+                        Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <FontIcon x:Name="ToastSymbol" FontSize="16" Glyph="&#xE73E;" VerticalAlignment="Top" Margin="0,2,0,0"
+                                  Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock x:Name="ToastTitel" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="ToastText" TextWrapping="Wrap" Opacity="0.85"/>
+                        </StackPanel>
+                        <Button x:Name="ToastAktion" Grid.Column="2" VerticalAlignment="Center" Visibility="Collapsed" Click="ToastAktion_Click"/>
+                        <Button Grid.Column="3" Padding="4" VerticalAlignment="Top" Background="Transparent" BorderThickness="0"
+                                Click="ToastSchliessen_Click" ToolTipService.ToolTip="Schließen">
+                            <FontIcon FontSize="12" Glyph="&#xE711;"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </controls:LayoutTransformControl>
+    </Grid>
+</Window>
