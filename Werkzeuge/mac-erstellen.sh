@@ -23,9 +23,10 @@ amEnde() {
   local code=$?
   [ $code -eq 0 ] && return 0
   sleep 1
-  local ende
-  ende=$(tail -n 25 "$PROTOKOLL" | cut -c1-200 | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS="%0A"} {print}' | cut -c1-3500)
-  echo "::error title=Mac-Build gescheitert (${PHASE})::${ende}" >&3
+  echo "::error title=Mac-Build::Abbruch in Phase ${PHASE} (Code ${code})" >&3
+  tail -n 9 "$PROTOKOLL" | tr -d '\r' | cut -c1-300 | while IFS= read -r zeile; do
+    echo "::warning title=Protokoll::${zeile//::/ }" >&3
+  done
   sleep 1
 }
 set -E
@@ -104,7 +105,10 @@ for RID in osx-arm64 osx-x64; do
   if [ -n "$IDENTITAET" ]; then
     # Erst alle Dateien einzeln (Bibliotheken, Programm), dann das Bündel
     while IFS= read -r datei; do
-      signieren "$datei" || { echo "Signieren fehlgeschlagen: $datei"; exit 1; }
+      if ! ausgabe=$(signieren "$datei" 2>&1); then
+        echo "::error title=codesign::${datei#$APP/}: $(echo "$ausgabe" | tr '\n' ' ' | cut -c1-900)" >&3
+        exit 1
+      fi
     done < <(find "$APP/Contents/MacOS" -type f)
     signieren "$APP"
     codesign --verify --deep --strict --verbose=2 "$APP" || echo "::warning title=Mac-Build::codesign --verify meldet Abweichungen ($RID)" >&3
