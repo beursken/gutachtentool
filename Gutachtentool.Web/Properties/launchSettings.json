@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Gutachtentool.Web": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:59570;http://localhost:59571"
+    }
+  }
+}

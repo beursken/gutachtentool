@@ -19,7 +19,8 @@ public sealed class KlausurAblage
     static readonly string[] Reserviert =
         { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "LPT1", "LPT2", "LPT3" };
 
-    public static string StandardWurzel =>
+    /// <summary>Vorgabe für die Ablage (Dokumente\Klausuren); vor dem Start änderbar (Browser-Fassung: virtuelles Dateisystem).</summary>
+    public static string StandardWurzel { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Klausuren");
 
     public KlausurAblage(string wurzel) => Wurzel = Path.GetFullPath(wurzel);

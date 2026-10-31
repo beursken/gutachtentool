@@ -1,0 +1,66 @@
+@* Baum der Textbausteine (rekursiv). Klick: einfügen bzw. Gruppe auf-/zuklappen. *@
+
+<ul class="baumliste">
+    @foreach (Baustein b in Elemente)
+    {
+        <li @key="b" class="@(b.IstGruppe ? "gruppe" : "blatt")" style="opacity:@Deckkraft(b)">
+            <div class="knoten" title="@b.Hinweis" @onclick="() => Verwenden(b)">
+                @if (b.IstGruppe)
+                {
+                    <span class="pfeil">@(b.IsExpanded ? "▾" : "▸")</span>
+                    <span class="text fett">@b.Text</span>
+                    @if (b.AnzahlText.Length > 0)
+                    {
+                        <span class="anzahl">@b.AnzahlText</span>
+                    }
+                }
+                else
+                {
+                    <span class="nr">@b.NrText</span>
+                    <span class="text">@b.Text</span>
+                    @if (b.HatKuerzel)
+                    {
+                        <span class="marke kuerzel">@b.KuerzelText</span>
+                    }
+                    @if (b.HatBereich)
+                    {
+                        <span class="marke bereich b@(b.BereichArt)">@b.Bereich</span>
+                    }
+                }
+                <span class="werkzeuge" @onclick:stopPropagation="true">
+                    @if (b.IstGruppe)
+                    {
+                        <button title="Neuer Baustein in dieser Gruppe" @onclick="() => Ausfuehren(() => Vm.NeuerBausteinAsync(string.Empty, b))">+</button>
+                        <button title="Neue Untergruppe" @onclick="() => Ausfuehren(() => Vm.NeueGruppeAsync(b))">⊞</button>
+                    }
+                    <button title="Bearbeiten" @onclick="() => Ausfuehren(() => Vm.BausteinBearbeitenAsync(b))">✎</button>
+                    <button title="Löschen" @onclick="() => Ausfuehren(() => Vm.BausteinLoeschenAsync(b))">🗑</button>
+                </span>
+            </div>
+            @if (b.IstGruppe && b.IsExpanded && b.Children.Count > 0)
+            {
+                <BausteinBaum Elemente="b.Children" Vm="Vm" Nachlauf="Nachlauf" />
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<Baustein> Elemente { get; set; } = Array.Empty<Baustein>();
+    [Parameter, EditorRequired] public MainViewModel Vm { get; set; } = default!;
+    [Parameter] public Func<Task>? Nachlauf { get; set; }
+
+    static string Deckkraft(Baustein b) => b.Deckkraft.ToString("0.##", CultureInfo.InvariantCulture);
+
+    async Task Verwenden(Baustein b)
+    {
+        Vm.BausteinVerwenden(b);
+        if (Nachlauf is not null) await Nachlauf();
+    }
+
+    async Task Ausfuehren(Func<Task> aktion)
+    {
+        await aktion();
+        if (Nachlauf is not null) await Nachlauf();
+    }
+}

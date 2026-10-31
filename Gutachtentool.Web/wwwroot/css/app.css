@@ -1,0 +1,268 @@
+/* Gutachtentool – Browser-Fassung. Ruhige, papiernahe Arbeitsfläche; Akzent Petrol. */
+:root {
+    --papier: #fbfaf7;
+    --grund: #f2f0ea;
+    --flaeche: #ffffff;
+    --linie: #dcd8ce;
+    --linie-stark: #bdb7a9;
+    --text: #22201c;
+    --text-leise: #6b665c;
+    --akzent: #1f4e5f;
+    --akzent-hell: #e3edf0;
+    --akzent-text: #ffffff;
+    --gut: #2e6b3f;
+    --gut-hell: #e4f0e6;
+    --warn: #8a5a00;
+    --warn-hell: #fbf0d9;
+    --fehler: #9b2c2c;
+    --fehler-hell: #f8e3e1;
+    --schatten: 0 8px 28px rgba(30, 28, 22, .16);
+    --rund: 6px;
+    --schrift: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --schrift-text: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --papier: #1d1f20;
+        --grund: #161718;
+        --flaeche: #232527;
+        --linie: #393c3f;
+        --linie-stark: #4d5155;
+        --text: #e9e6df;
+        --text-leise: #a19d94;
+        --akzent: #7fb3c4;
+        --akzent-hell: #233840;
+        --akzent-text: #0f1a1e;
+        --gut: #8cc79b;
+        --gut-hell: #1f3325;
+        --warn: #e0b45c;
+        --warn-hell: #3a2f18;
+        --fehler: #ee9a92;
+        --fehler-hell: #3d2422;
+        --schatten: 0 8px 28px rgba(0, 0, 0, .5);
+        color-scheme: dark;
+    }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--grund);
+    color: var(--text);
+    font: 14px/1.45 var(--schrift);
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---------- Grundgerüst ---------- */
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+
+.kopf {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 8px 16px; background: var(--flaeche); border-bottom: 1px solid var(--linie);
+}
+.marke { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: .01em; }
+.menues { display: flex; gap: 4px; margin-left: auto; }
+.menue { position: relative; }
+.menueliste {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; min-width: 290px;
+    display: flex; flex-direction: column; padding: 6px; background: var(--flaeche);
+    border: 1px solid var(--linie); border-radius: var(--rund); box-shadow: var(--schatten);
+}
+.menueliste.rechts { left: auto; right: 0; }
+.menueliste button { text-align: left; padding: 7px 10px; border: 0; background: none; border-radius: 4px; cursor: pointer; }
+.menueliste button:hover { background: var(--akzent-hell); }
+.menueliste hr { border: 0; border-top: 1px solid var(--linie); margin: 4px 0; width: 100%; }
+.menuetext { padding: 6px 10px; color: var(--text-leise); font-size: 12.5px; max-width: 320px; }
+.menueschutz { position: fixed; inset: 0; z-index: 20; }
+
+.arbeitsflaeche {
+    display: grid; grid-template-columns: minmax(240px, 320px) 1fr; min-height: 0;
+}
+.arbeitsflaeche.mit-uebersicht { grid-template-columns: minmax(240px, 320px) 1fr minmax(220px, 280px); }
+
+.fuss {
+    display: flex; gap: 8px; align-items: center; padding: 4px 16px; font-size: 12.5px;
+    color: var(--text-leise); background: var(--flaeche); border-top: 1px solid var(--linie);
+}
+.abstand { flex: 1; }
+.fehlertext { color: var(--fehler); }
+.verborgen { display: none !important; }
+
+/* ---------- Bedienelemente ---------- */
+.knopf {
+    padding: 6px 12px; border: 1px solid var(--linie-stark); border-radius: var(--rund);
+    background: var(--flaeche); cursor: pointer; white-space: nowrap;
+}
+.knopf:hover:not(:disabled) { border-color: var(--akzent); }
+.knopf:disabled { opacity: .45; cursor: default; }
+.knopf.haupt { background: var(--akzent); color: var(--akzent-text); border-color: var(--akzent); font-weight: 600; }
+.knopf.leise { border-color: transparent; background: none; }
+.knopf.leise:hover:not(:disabled), .knopf.leise.aktiv { background: var(--akzent-hell); }
+
+input:not([type=checkbox]), select, textarea {
+    padding: 5px 8px; border: 1px solid var(--linie-stark); border-radius: 4px; background: var(--flaeche);
+}
+input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid var(--akzent); outline-offset: -1px; }
+
+.feldgruppe { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.feldgruppe label { font-size: 12px; color: var(--text-leise); }
+.feldgruppe.schmal input { width: 90px; }
+.klausurwahl { flex-direction: row; align-items: center; gap: 8px; }
+.klausurwahl select { min-width: 240px; max-width: 420px; }
+.schalter { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* ---------- Textbausteine ---------- */
+.bausteine {
+    display: flex; flex-direction: column; min-height: 0; background: var(--papier);
+    border-right: 1px solid var(--linie);
+}
+.leiste { display: flex; gap: 6px; align-items: center; padding: 8px 10px; }
+.leiste.klein { padding-top: 0; flex-wrap: wrap; }
+.leiste input[type=search] { width: 100%; }
+.baum { flex: 1; overflow: auto; padding: 0 6px 8px; }
+.leer, .tipp { color: var(--text-leise); padding: 8px; font-size: 12.5px; }
+.tipp { border-top: 1px solid var(--linie); margin: 0; }
+
+.baumliste { list-style: none; margin: 0; padding: 0; }
+.baumliste .baumliste { padding-left: 14px; border-left: 1px dotted var(--linie-stark); margin-left: 6px; }
+.knoten {
+    position: relative; display: flex; gap: 6px; align-items: baseline; padding: 4px 6px;
+    border-radius: 4px; cursor: pointer;
+}
+.knoten:hover { background: var(--akzent-hell); }
+.knoten .nr { min-width: 20px; color: var(--text-leise); font-size: 11.5px; }
+.knoten .text { flex: 1; min-width: 0; }
+.knoten .fett { font-weight: 600; }
+.knoten .pfeil { width: 12px; color: var(--text-leise); }
+.anzahl, .marke {
+    font-size: 11px; padding: 0 6px; border-radius: 8px; background: var(--grund); color: var(--text-leise);
+    white-space: nowrap;
+}
+.marke.kuerzel { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.marke.bereich.b1 { background: var(--fehler-hell); color: var(--fehler); }
+.marke.bereich.b2 { background: var(--gut-hell); color: var(--gut); }
+.marke.bereich.b3 { background: var(--warn-hell); color: var(--warn); }
+.werkzeuge { display: none; gap: 2px; position: absolute; right: 4px; top: 2px; background: var(--flaeche); border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.knoten:hover .werkzeuge { display: flex; }
+.werkzeuge button { border: 0; background: none; padding: 2px 6px; cursor: pointer; border-radius: 3px; }
+.werkzeuge button:hover { background: var(--akzent-hell); }
+
+/* ---------- Gutachten ---------- */
+.mitte { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: 12px 18px 0; gap: 10px; }
+.angaben, .bewertung {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px;
+    padding: 10px 12px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund);
+}
+.angaben .aktionen { display: flex; gap: 8px; margin-left: auto; }
+.hinweiszeile { width: 100%; font-size: 12.5px; color: var(--text-leise); }
+.punktetext { color: var(--text-leise); align-self: center; }
+
+.reiter { display: flex; gap: 2px; align-items: flex-end; border-bottom: 1px solid var(--linie); }
+.reiter > button:not(.format) {
+    padding: 6px 14px; border: 1px solid transparent; border-bottom: 0; background: none; cursor: pointer;
+    border-radius: var(--rund) var(--rund) 0 0; color: var(--text-leise);
+}
+.reiter > button.aktiv { background: var(--flaeche); border-color: var(--linie); color: var(--text); margin-bottom: -1px; font-weight: 600; }
+.reiter .kurz { font-weight: 400; color: var(--text-leise); margin-left: 6px; font-size: 12px; }
+.reiter .format { width: 30px; height: 28px; margin-bottom: 3px; border: 1px solid var(--linie); background: var(--flaeche); border-radius: 4px; cursor: pointer; }
+
+.editorrahmen { flex: 1; min-height: 0; overflow: auto; padding-bottom: 18px; }
+.editor {
+    min-height: 100%; max-width: 46em; margin: 0 auto; padding: 28px 36px;
+    background: var(--flaeche); border: 1px solid var(--linie); border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    font: 16px/1.6 var(--schrift-text); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.editor:empty::before { content: attr(data-platzhalter); color: var(--text-leise); font-family: var(--schrift); font-size: 14px; }
+
+/* ---------- Rohpunkte ---------- */
+.rohpunkte { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.rp-kopf { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; color: var(--text-leise); }
+.rp-liste { flex: 1; overflow: auto; background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); }
+.rp-zeile {
+    display: grid; grid-template-columns: minmax(200px, 2fr) 180px minmax(220px, 3fr); gap: 10px; align-items: start;
+    padding: 6px 12px; border-bottom: 1px solid var(--linie);
+}
+.rp-zeile.aufgabe { background: var(--grund); }
+.rp-zeile.aufgabe .rp-titel, .rp-zeile.ueberschrift .rp-titel { grid-column: 1 / 3; }
+.rp-zeile.ergebnis { color: var(--text-leise); font-style: italic; }
+.rp-zeile.offen .rp-punkte input { border-color: var(--warn); }
+.rp-titel .fett { font-weight: 600; }
+.etiketten { display: block; font-size: 12px; color: var(--text-leise); }
+.bewertungshinweis summary { font-size: 12px; color: var(--akzent); cursor: pointer; }
+.bewertungshinweis div { font-size: 12.5px; padding: 4px 0; white-space: pre-wrap; }
+.rp-punkte { display: flex; gap: 6px; align-items: center; }
+.rp-punkte input { width: 78px; }
+.rp-punkte .max { font-size: 12px; color: var(--text-leise); }
+.rp-anmerkung { width: 100%; resize: vertical; min-height: 34px; }
+.rp-summe { text-align: right; font-weight: 600; grid-column: 3; }
+
+/* ---------- Übersicht ---------- */
+.uebersicht { display: flex; flex-direction: column; min-height: 0; background: var(--papier); border-left: 1px solid var(--linie); }
+.kennzahlen { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; padding: 0 12px 8px; font-size: 13px; }
+.kennzahlen dt { color: var(--text-leise); }
+.kennzahlen dd { margin: 0; font-weight: 600; text-align: right; }
+.verteilung { display: flex; align-items: flex-end; gap: 2px; height: 76px; padding: 0 12px; }
+.balken { flex: 1; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; }
+.saeule { background: var(--akzent); border-radius: 2px 2px 0 0; min-height: 1px; }
+.saeule.nicht { background: var(--fehler); opacity: .7; }
+.beschriftung { font-size: 10px; text-align: center; color: var(--text-leise); height: 14px; }
+.fortschritt { display: flex; flex-direction: column; gap: 2px; padding: 6px 12px; font-size: 12px; }
+.fortschritt progress { width: 100%; }
+.klein { font-size: 12px; color: var(--text-leise); }
+.eintraege { list-style: none; margin: 0; padding: 0 6px 8px; overflow: auto; flex: 1; }
+.eintraege li { display: flex; gap: 8px; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+.eintraege li:hover { background: var(--akzent-hell); }
+.eintraege .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eintraege .status { color: var(--text-leise); font-variant-numeric: tabular-nums; }
+
+/* ---------- Dialoge und Meldungen ---------- */
+.dialoghintergrund { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20, 20, 18, .35); padding: 16px; }
+.dialog {
+    width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px;
+    background: var(--flaeche); border-radius: 10px; box-shadow: var(--schatten);
+    display: flex; flex-direction: column; gap: 10px;
+}
+.dialog.breit { width: min(860px, 100%); }
+.dialog h2 { margin: 0 0 4px; font-size: 17px; }
+.dialogtext { margin: 0; white-space: pre-wrap; }
+.dialogfeld { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.dialogfeld span { font-size: 12.5px; color: var(--text-leise); }
+.dialogfeld.schmal { flex: 0 0 120px; }
+.dialogzeile { display: flex; gap: 10px; flex-wrap: wrap; }
+.dialog textarea.fest { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; white-space: pre; }
+.dialogknoepfe { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+
+.meldungen { position: fixed; right: 16px; bottom: 40px; z-index: 60; display: flex; flex-direction: column; gap: 8px; width: min(440px, calc(100vw - 32px)); }
+.meldung {
+    display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--rund);
+    background: var(--flaeche); border-left: 4px solid var(--akzent); box-shadow: var(--schatten);
+}
+.meldung.erfolg { border-left-color: var(--gut); }
+.meldung.warnung { border-left-color: var(--warn); }
+.meldung.fehler { border-left-color: var(--fehler); }
+.meldungstext { flex: 1; display: flex; flex-direction: column; gap: 2px; white-space: pre-wrap; }
+.schliessen { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--text-leise); }
+
+/* ---------- Start und Fehler ---------- */
+.startbild { height: 100vh; display: grid; place-content: center; justify-items: center; color: var(--text-leise); }
+#blazor-error-ui {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 10px 16px;
+    background: var(--fehler-hell); color: var(--fehler); box-shadow: var(--schatten);
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 16px; top: 8px; }
+
+/* ---------- Schmale Fenster ---------- */
+@media (max-width: 900px) {
+    .arbeitsflaeche, .arbeitsflaeche.mit-uebersicht { grid-template-columns: 1fr; grid-auto-rows: auto; overflow: auto; }
+    .bausteine { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--linie); }
+    .uebersicht { border-left: 0; border-top: 1px solid var(--linie); }
+    .rp-zeile { grid-template-columns: 1fr; }
+    .rp-summe { grid-column: 1; }
+    .editor { padding: 18px; }
+}

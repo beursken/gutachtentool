@@ -1,5 +1,7 @@
 # Übersetzt alle Fassungen des Gutachtentools und stellt die Ergebnisse als Artefakte bereit.
 # Auslöser: jeder Push, jeder Pull Request, manuell (Actions › Build › Run workflow).
+# Die eigentlichen Schritte stehen in Skripten (Installer/Erstellen.ps1, Werkzeuge/*.sh),
+# damit dieser Ablauf selten geändert werden muss. Vorlage: Werkzeuge/build.yml.
 name: Build
 
 on:
@@ -41,3 +43,43 @@ jobs:
           name: Gutachtentool-Windows
           path: Installer/Ausgabe/*.exe
           if-no-files-found: error
+
+  web:
+    name: Browser (Blazor WebAssembly)
+    runs-on: ubuntu-latest
+    needs: kern
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Veröffentlichen
+        run: bash Werkzeuge/web-erstellen.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gutachtentool-Web
+          path: publish/web/wwwroot
+          if-no-files-found: ignore
+
+  mac:
+    name: macOS (Avalonia, signiert und notarisiert)
+    runs-on: macos-latest
+    needs: kern
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Programm erstellen, signieren, notarisieren
+        run: bash Werkzeuge/mac-erstellen.sh
+        env:
+          MAC_ZERTIFIKAT_P12: ${{ secrets.MAC_ZERTIFIKAT_P12 }}
+          MAC_ZERTIFIKAT_PASSWORT: ${{ secrets.MAC_ZERTIFIKAT_PASSWORT }}
+          MAC_NOTAR_SCHLUESSEL: ${{ secrets.MAC_NOTAR_SCHLUESSEL }}
+          MAC_NOTAR_SCHLUESSEL_ID: ${{ secrets.MAC_NOTAR_SCHLUESSEL_ID }}
+          MAC_NOTAR_AUSSTELLER: ${{ secrets.MAC_NOTAR_AUSSTELLER }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gutachtentool-Mac
+          path: publish/mac/*.dmg
+          if-no-files-found: ignore

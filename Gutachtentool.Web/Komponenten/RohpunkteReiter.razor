@@ -1,0 +1,93 @@
+@* Reiter „Rohpunkte“: Punkte und Anmerkungen je Gliederungspunkt des Rohpunkteschemas. *@
+
+<section class="rohpunkte">
+    <div class="rp-kopf">
+        <span>@Vm.RohpunkteStatus</span>
+        @if (Vm.NotenHinweis is { } hinweis)
+        {
+            <span class="hinweiszeile">@hinweis</span>
+        }
+        @if (Vm.NoteAbweichend)
+        {
+            <button class="knopf leise" @onclick="Uebernehmen">Errechnete Note übernehmen</button>
+        }
+    </div>
+
+    <div class="rp-liste">
+        @for (int i = 0; i < Vm.Rohpunktzeilen.Count; i++)
+        {
+            int n = i;
+            RohpunktZeile z = Vm.Rohpunktzeilen[n];
+            <div class="rp-zeile @Klasse(z)" @key="z">
+                <div class="rp-titel" style="padding-left:@Px(z.EinrueckungLinks)">
+                    <span class="@(z.Fett ? "fett" : "")">@z.Titel</span>
+                    @if (z.HatEtiketten)
+                    {
+                        <span class="etiketten">@z.Etiketten</span>
+                    }
+                    @if (z.HatHinweis)
+                    {
+                        <details class="bewertungshinweis">
+                            <summary>Bewertungshinweis</summary>
+                            <div>@z.Hinweis</div>
+                        </details>
+                    }
+                </div>
+                @if (z.IstEingabe)
+                {
+                    <div class="rp-punkte">
+                        <input type="number" min="0" max="@Hauptseite.ZahlText(z.Max)" step="0.25" aria-label="Punkte für @z.Titel"
+                               value="@Hauptseite.ZahlText(z.Punkte)" @onchange="e => PunkteSetzen(z, e.Value as string)" />
+                        <span class="max">@z.MaxText</span>
+                    </div>
+                    <textarea id="@FeldId(n)" class="rp-anmerkung" rows="2" spellcheck="true" lang="de" placeholder="Anmerkung (erscheint im Gutachten)"
+                              value="@Text(z)" @onfocus="() => KommentarGewaehlt.InvokeAsync(n)"
+                              @onchange="e => KommentarSetzen(z, e.Value as string)"></textarea>
+                }
+                else if (z.IstKopf)
+                {
+                    <div class="rp-summe">@z.Zwischensumme</div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public MainViewModel Vm { get; set; } = default!;
+    [Parameter] public Func<Task>? Nachlauf { get; set; }
+    [Parameter] public EventCallback<int> KommentarGewaehlt { get; set; }
+
+    public static string FeldId(int n) => "rp-anmerkung-" + n.ToString(CultureInfo.InvariantCulture);
+
+    static string Px(double wert) => wert.ToString("0", CultureInfo.InvariantCulture) + "px";
+
+    static string Klasse(RohpunktZeile z) => z.Art switch
+    {
+        Zeilenart.Aufgabe => "aufgabe",
+        Zeilenart.Ueberschrift => "ueberschrift",
+        Zeilenart.Ergebnis => "ergebnis",
+        Zeilenart.Bonus or Zeilenart.Minus => "zuschlag",
+        _ => z.Offen ? "position offen" : "position",
+    };
+
+    static string Text(RohpunktZeile z) => string.Concat(z.Kommentar.Select(l => l.T));
+
+    static void PunkteSetzen(RohpunktZeile z, string? wert)
+    {
+        z.Punkte = string.IsNullOrWhiteSpace(wert) ? double.NaN : Hauptseite.ZahlLesen(wert, double.NaN);
+    }
+
+    static void KommentarSetzen(RohpunktZeile z, string? text)
+    {
+        // Die Browser-Fassung bearbeitet Anmerkungen als reinen Text; Fett/Kursiv bleibt nur bis zur ersten Änderung erhalten.
+        if (text == Text(z)) return;
+        z.KommentarVomEditor(string.IsNullOrEmpty(text) ? new List<TextLauf>() : new List<TextLauf> { new(text) });
+    }
+
+    async Task Uebernehmen()
+    {
+        if (Vm.ErrechneteNoteUebernehmenCommand.CanExecute(null)) Vm.ErrechneteNoteUebernehmenCommand.Execute(null);
+        if (Nachlauf is not null) await Nachlauf();
+    }
+}

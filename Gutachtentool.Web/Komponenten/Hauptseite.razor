@@ -1,0 +1,498 @@
+@using System.ComponentModel
+@using System.Windows.Input
+@using CommunityToolkit.Mvvm.Input
+@implements IAsyncDisposable
+@inject Ablagespeicher Speicher
+@inject WebUi Ui
+@inject WebEditor Editor
+@inject IJSRuntime Js
+
+<div class="app">
+    <header class="kopf">
+        <div class="marke" title="Gutachtentool @Fassung – Browser-Fassung">
+            <img src="favicon.png" alt="" width="20" height="20" />
+            <span>Gutachtentool</span>
+        </div>
+
+        @if (_vm is not null)
+        {
+            <div class="feldgruppe klausurwahl">
+                <label for="f-klausur">Klausur</label>
+                <select id="f-klausur" value="@_vm.KlausurName" @onchange="e => KlausurWaehlen(e.Value as string)">
+                    @if (_vm.KeineKlausur)
+                    {
+                        <option value="">– bitte wählen –</option>
+                    }
+                    @foreach (string k in _vm.Klausuren)
+                    {
+                        <option value="@k">@k</option>
+                    }
+                </select>
+                <button class="knopf leise" @onclick="NeueKlausurAsync" title="Neue Klausur anlegen">Neu …</button>
+            </div>
+
+            <nav class="menues">
+                <div class="menue">
+                    <button class="knopf leise @(_menue == "klausur" ? "aktiv" : "")" @onclick='() => MenueUmschalten("klausur")'>Klausur ▾</button>
+                    @if (_menue == "klausur")
+                    {
+                        <div class="menueliste" @onclick="() => _menue = null">
+                            <button @onclick="() => Los(_vm.KonfigurationBearbeitenCommand)">Klausureinstellungen …</button>
+                            <hr />
+                            <button @onclick="() => Los(_vm.NotenlisteOeffnenCommand)">Notenliste herunterladen</button>
+                            <button @onclick="() => Los(_vm.ErwartungshorizontOeffnenCommand)">Erwartungshorizont herunterladen</button>
+                            <button @onclick="() => Los(_vm.TeilnehmendeImportierenCommand)">Teilnehmendenliste hochladen …</button>
+                            <hr />
+                            <button @onclick="() => Los(_vm.VorlageBearbeitenCommand)">Word-Vorlage herunterladen</button>
+                            <button @onclick="() => Los(_vm.VorlageImportierenCommand)">Word-Vorlage hochladen …</button>
+                            <button @onclick="() => Los(_vm.FormulierungenBearbeitenCommand)">Textbausteine herunterladen (Texte.txt)</button>
+                            <button @onclick="() => Los(_vm.FormulierungenImportierenCommand)">Textbausteine hochladen …</button>
+                            <button @onclick="() => Los(_vm.RohpunkteInExcelBearbeitenCommand)">Rohpunkteschema als Excel herunterladen</button>
+                            <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema hochladen …</button>
+                            <hr />
+                            <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
+                            <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
+                        </div>
+                    }
+                </div>
+                <div class="menue">
+                    <button class="knopf leise @(_menue == "daten" ? "aktiv" : "")" @onclick='() => MenueUmschalten("daten")'>Daten ▾</button>
+                    @if (_menue == "daten")
+                    {
+                        <div class="menueliste rechts" @onclick="() => _menue = null">
+                            <button @onclick="SicherungHerunterladen">Sicherung herunterladen (ZIP)</button>
+                            <button @onclick="SicherungEinspielenAsync">Sicherung einspielen …</button>
+                            <hr />
+                            <div class="menuetext">
+                                Alle Daten liegen nur in diesem Browser auf diesem Rechner.
+                                Löschen der Browserdaten löscht auch Klausuren und Gutachten – bitte regelmäßig sichern.
+                                @if (_belegung is { } b)
+                                {
+                                    <br /><span>Belegt: @Groesse(b.Belegt) von @Groesse(b.Verfuegbar)</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <button class="knopf leise @(_vm.SeitenleisteOffen ? "aktiv" : "")" @onclick="() => _vm.SeitenleisteOffen = !_vm.SeitenleisteOffen" title="Übersicht ein-/ausblenden">Übersicht</button>
+            </nav>
+        }
+    </header>
+
+    @if (_menue is not null)
+    {
+        <div class="menueschutz" @onclick="() => _menue = null"></div>
+    }
+
+    <div class="arbeitsflaeche @(_vm?.SeitenleisteOffen == true ? "mit-uebersicht" : "")">
+        @* ---------- Textbausteine ---------- *@
+        <aside class="bausteine">
+            @if (_vm is not null)
+            {
+                <div class="leiste">
+                    <input id="f-suche" type="search" placeholder="Bausteine durchsuchen" value="@_vm.Suchtext"
+                           @oninput="e => _vm.Suchtext = e.Value as string ?? string.Empty" @onkeydown="SucheTaste" />
+                </div>
+                <div class="leiste klein">
+                    <button class="knopf leise" @onclick="() => Los(_vm.NeuerBausteinOhneBezugCommand)" disabled="@_vm.KeineKlausur">+ Baustein</button>
+                    <button class="knopf leise" @onclick="() => Los(_vm.NeueGruppeOhneBezugCommand)" disabled="@_vm.KeineKlausur">+ Gruppe</button>
+                    <button class="knopf leise" @onclick="() => Los(_vm.BausteinRueckgaengigCommand)" disabled="@(!_vm.KannRueckgaengig)" title="Letzte Änderung an den Bausteinen zurücknehmen">↶</button>
+                </div>
+                <div class="baum">
+                    @if (_vm.KeineKlausur)
+                    {
+                        <p class="leer">Bitte zuerst eine Klausur wählen oder anlegen.</p>
+                    }
+                    else if (_vm.KeineBausteine)
+                    {
+                        <p class="leer">Noch keine Textbausteine. „+ Baustein“ legt einen an; ein Paket aus dem KI-Portal bringt fertige mit.</p>
+                    }
+                    else if (_vm.KeineTreffer)
+                    {
+                        <p class="leer">Keine Treffer.</p>
+                    }
+                    else
+                    {
+                        <BausteinBaum Elemente="@(_vm.Umsortierbar ? _vm.Bausteine : _vm.Treffer)" Vm="_vm" Nachlauf="@Nachlauf" />
+                    }
+                </div>
+                <p class="tipp">Klick fügt ein · Kürzel + Tab im Text fügt ein</p>
+            }
+        </aside>
+
+        @* ---------- Gutachten ---------- *@
+        <main class="mitte">
+            @if (_vm is not null)
+            {
+                <section class="angaben">
+                    <div class="feldgruppe">
+                        <label for="f-student">@_vm.KennungsBezeichnung</label>
+                        <input id="f-student" list="teilnehmende" value="@_vm.Student" @onchange="e => StudentSetzen(e.Value as string)" autocomplete="off" />
+                        <datalist id="teilnehmende">
+                            @foreach (Teilnehmer t in _vm.TeilnehmerVorschlaege(_vm.Student))
+                            {
+                                <option value="@t.ToString()"></option>
+                            }
+                        </datalist>
+                    </div>
+                    @if (_vm.MatrikelSichtbar)
+                    {
+                        <div class="feldgruppe">
+                            <label for="f-matrikel">Matrikelnummer</label>
+                            <input id="f-matrikel" value="@_vm.Matrikel" @onchange="e => _vm.Matrikel = e.Value as string ?? string.Empty" />
+                        </div>
+                    }
+                    <label class="schalter"><input type="checkbox" checked="@_vm.Anonym" @onchange="e => _vm.Anonym = e.Value is true" /> anonym</label>
+                    <div class="feldgruppe">
+                        <label for="f-note">Note</label>
+                        <select id="f-note" value="@_vm.NotenIndex" @onchange="e => _vm.NotenIndex = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                            @for (int i = 0; i < _vm.NotenAuswahl.Count; i++)
+                            {
+                                <option value="@i">@_vm.NotenAuswahl[i]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="feldgruppe schmal">
+                        <label for="f-seiten">Seiten</label>
+                        <input id="f-seiten" type="number" min="0" step="1" value="@ZahlText(_vm.Seiten)" @onchange="e => _vm.Seiten = Math.Max(0, ZahlLesen(e.Value as string, 0))" />
+                    </div>
+                    <div class="aktionen">
+                        <button class="knopf" @onclick="_vm.NeueArbeit" title="Eingaben für die nächste Arbeit leeren">Nächste Arbeit</button>
+                        <button class="knopf haupt" @onclick="() => Los(_vm.GenerierenCommand)" disabled="@_vm.KeineKlausur">Gutachten erstellen</button>
+                    </div>
+                    @if (_vm.InBearbeitung)
+                    {
+                        <div class="hinweiszeile">@_vm.BearbeitungsHinweis</div>
+                    }
+                </section>
+
+                @if (_vm.HatKriterien || _vm.TeilpunkteSichtbar || _vm.HatNotenvorschlag)
+                {
+                    <section class="bewertung">
+                        @foreach (KriteriumAuswahl k in _vm.Kriterien)
+                        {
+                            <div class="feldgruppe">
+                                <label>@k.Name</label>
+                                <select value="@k.Index" @onchange="e => k.Index = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                                    @for (int i = 0; i < k.Optionen.Count; i++)
+                                    {
+                                        <option value="@i">@k.Optionen[i]</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        @if (_vm.TeilpunkteSichtbar)
+                        {
+                            @foreach (AufgabenPunkte a in _vm.Aufgaben)
+                            {
+                                <div class="feldgruppe schmal">
+                                    <label title="@a.Kopf">@a.Kopf</label>
+                                    <input type="number" min="0" max="@ZahlText(a.Maximum)" step="0.25" value="@ZahlText(a.Punkte)"
+                                           @onchange="e => a.Punkte = ZahlLesen(e.Value as string, double.NaN)" />
+                                </div>
+                            }
+                            <div class="punktetext">@_vm.PunkteText</div>
+                        }
+                        @if (_vm.HatNotenvorschlag)
+                        {
+                            <button class="knopf leise" @onclick="() => Los(_vm.NotenvorschlagUebernehmenCommand)">Vorschlag übernehmen: @_vm.Notenvorschlag Punkte</button>
+                        }
+                    </section>
+                }
+
+                <div class="reiter">
+                    <button class="@(_reiter == 0 ? "aktiv" : "")" @onclick="() => ReiterSetzen(0)">Gutachten</button>
+                    @if (_vm.HatSchema)
+                    {
+                        <button class="@(_reiter == 1 ? "aktiv" : "")" @onclick="() => ReiterSetzen(1)">Rohpunkte @if (_vm.RohpunkteKurz is { } kurz) { <span class="kurz">@kurz</span> }</button>
+                    }
+                    <span class="abstand"></span>
+                    @if (_reiter == 0)
+                    {
+                        <button class="format" title="Fett (Strg+B)" @onclick='() => Editor.Formatieren("bold")'><b>F</b></button>
+                        <button class="format" title="Kursiv (Strg+I)" @onclick='() => Editor.Formatieren("italic")'><i>K</i></button>
+                    }
+                </div>
+            }
+
+            @* Der Editor ist immer vorhanden: das ViewModel setzt den Entwurf schon beim Start. *@
+            <div class="editorrahmen @(_reiter == 0 ? "" : "verborgen")">
+                <div id="@WebEditor.ElementId" class="editor" contenteditable="true" spellcheck="true" lang="de"
+                     data-platzhalter="Gutachtentext – Bausteine links anklicken oder Kürzel + Tab"></div>
+            </div>
+
+            @if (_vm is not null && _vm.HatSchema && _reiter == 1)
+            {
+                <RohpunkteReiter Vm="_vm" Nachlauf="@Nachlauf" KommentarGewaehlt="@((int n) => _kommentarZeile = n)" />
+            }
+        </main>
+
+        @* ---------- Übersicht ---------- *@
+        @if (_vm is not null && _vm.SeitenleisteOffen)
+        {
+            <Uebersicht Vm="_vm" Nachlauf="@Nachlauf" />
+        }
+    </div>
+
+    <footer class="fuss">
+        @if (_vm is null)
+        {
+            <span>Lade gespeicherte Daten …</span>
+        }
+        else
+        {
+            <span>@(_vm.KeineKlausur ? "Keine Klausur" : _vm.KlausurName)</span>
+            @if (_vm.RohpunkteKurz is { } rp)
+            {
+                <span>· @rp</span>
+            }
+            <span class="abstand"></span>
+            @if (Speicher.Fehler is { } f)
+            {
+                <span class="fehlertext" title="@f">Speichern im Browser fehlgeschlagen</span>
+            }
+            else if (Speicher.Gesichert is { } g)
+            {
+                <span title="Alle Daten bleiben in diesem Browser">Im Browser gespeichert @g.ToString("HH:mm:ss")</span>
+            }
+        }
+    </footer>
+</div>
+
+@code {
+    MainViewModel? _vm;
+    int _phase;
+    int _reiter;
+    string? _menue;
+    int? _kommentarZeile;
+    (double Belegt, double Verfuegbar)? _belegung;
+    Timer? _takt;
+    DotNetObjectReference<WebEditor>? _editorRef;
+    DotNetObjectReference<Hauptseite>? _seitenRef;
+
+    static string Fassung =>
+        typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Ui.Geaendert += Neuzeichnen;
+        Ui.RohpunkteGewuenscht += () => { _reiter = 1; Neuzeichnen(); };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _editorRef = DotNetObjectReference.Create(Editor);
+            await Js.InvokeVoidAsync("gutachtentool.editor.anmelden", WebEditor.ElementId, _editorRef);
+            try
+            {
+                await Speicher.LadenAsync();
+            }
+            catch (JSException ex)
+            {
+                Ui.Melden(Meldungsart.Fehler, "Browserspeicher nicht verfügbar",
+                    "Im privaten Modus oder bei gesperrtem Speicher bleiben Eingaben nicht erhalten. " + ex.Message);
+            }
+            _vm = new MainViewModel(Ui, Editor);
+            _vm.PropertyChanged += VmGeaendert;
+            Editor.KuerzelSuche = _vm.BausteinNachKuerzel;
+            Editor.Geaendert = _vm.EntwurfGeaendert;
+            Editor.AnderesZiel = InAnmerkungEinfuegen;
+            _phase = 1;
+            StateHasChanged();
+            return;
+        }
+        if (_phase == 1 && _vm is not null)
+        {
+            _phase = 2;
+            _vm.Initialisieren();
+            // Im Browser bedeutet „Öffnen“ Herunterladen: das erstellte Gutachten wird stets heruntergeladen.
+            _vm.WordOeffnen = true;
+            await Speicher.SichernAsync();
+            _seitenRef = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("gutachtentool.beimVerlassen", _seitenRef);
+            _takt = new Timer(_ => _ = InvokeAsync(TaktAsync), null, 3000, 3000);
+            _belegung = await Speicher.BelegungAsync();
+            StateHasChanged();
+        }
+    }
+
+    void VmGeaendert(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.HatSchema) && _vm?.HatSchema == false) _reiter = 0;
+        Neuzeichnen();
+    }
+
+    void Neuzeichnen() => _ = InvokeAsync(StateHasChanged);
+
+    async Task TaktAsync()
+    {
+        if (_vm is null) return;
+        _vm.Autosave();
+        Ui.AusstehendeHerunterladen();
+        if (await Speicher.SichernAsync() > 0) StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task JetztSichern()
+    {
+        if (_vm is null) return;
+        _vm.Autosave(erzwingen: true);
+        await Speicher.SichernAsync();
+    }
+
+    /// <summary>Nach jeder Aktion: Downloads ausliefern, Daten sichern, neu zeichnen.</summary>
+    async Task Nachlauf()
+    {
+        Ui.AusstehendeHerunterladen();
+        await Speicher.SichernAsync();
+        StateHasChanged();
+    }
+
+    async Task Los(ICommand befehl)
+    {
+        _menue = null;
+        try
+        {
+            if (befehl is IAsyncRelayCommand a)
+            {
+                if (a.CanExecute(null)) await a.ExecuteAsync(null);
+            }
+            else if (befehl.CanExecute(null))
+            {
+                befehl.Execute(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+            Ui.Melden(Meldungsart.Fehler, "Fehler", ex.Message);
+        }
+        await Nachlauf();
+    }
+
+    void MenueUmschalten(string name)
+    {
+        _menue = _menue == name ? null : name;
+        if (_menue == "daten") _ = BelegungAktualisierenAsync();
+    }
+
+    async Task BelegungAktualisierenAsync()
+    {
+        _belegung = await Speicher.BelegungAsync();
+        StateHasChanged();
+    }
+
+    void ReiterSetzen(int reiter)
+    {
+        _reiter = reiter;
+        if (reiter == 0) _kommentarZeile = null;
+    }
+
+    /// <summary>Im Reiter „Rohpunkte“ gehen Bausteine in die zuletzt gewählte Anmerkung.</summary>
+    bool InAnmerkungEinfuegen(string text)
+    {
+        if (_vm is null || _reiter != 1 || _kommentarZeile is not int n || n >= _vm.Rohpunktzeilen.Count) return false;
+        RohpunktZeile z = _vm.Rohpunktzeilen[n];
+        if (!z.IstEingabe) return false;
+        string? wert = ((IJSInProcessRuntime)Js).Invoke<string?>("gutachtentool.feld.einfuegen", RohpunkteReiter.FeldId(n), text);
+        if (wert is null) return false;
+        z.KommentarVomEditor(new List<TextLauf> { new(wert) });
+        return true;
+    }
+
+    // ---------- Klausur und Angaben ----------
+
+    async Task KlausurWaehlen(string? name)
+    {
+        if (_vm is null || string.IsNullOrEmpty(name)) return;
+        _vm.KlausurWechseln(name);
+        await Nachlauf();
+    }
+
+    async Task NeueKlausurAsync()
+    {
+        if (_vm is null) return;
+        string? name = await Ui.TextEingebenAsync("Neue Klausur", string.Empty, "Bezeichnung der Klausur (z. B. „Übung Zivilrecht WS 2026-27 K1“)");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        _vm.KlausurWechseln(name.Trim());
+        await Nachlauf();
+    }
+
+    void StudentSetzen(string? eingabe)
+    {
+        if (_vm is null) return;
+        eingabe ??= string.Empty;
+        Teilnehmer? t = _vm.TeilnehmerVorschlaege(eingabe).FirstOrDefault(x => x.ToString() == eingabe);
+        if (t is not null) _vm.TeilnehmerWaehlen(t);
+        else _vm.Student = eingabe;
+    }
+
+    void SucheTaste(KeyboardEventArgs e)
+    {
+        if (_vm is null) return;
+        if (e.Key == "Enter" && _vm.ErsterTreffer is { } b)
+        {
+            _vm.BausteinVerwenden(b);
+            _vm.Suchtext = string.Empty;
+        }
+        else if (e.Key == "Escape")
+        {
+            _vm.Suchtext = string.Empty;
+        }
+    }
+
+    // ---------- Datensicherung ----------
+
+    void SicherungHerunterladen()
+    {
+        _vm?.Autosave(erzwingen: true);
+        Ui.Herunterladen($"Gutachtentool-Sicherung-{DateTime.Now:yyyy-MM-dd-HHmm}.zip", Speicher.SicherungErstellen());
+    }
+
+    async Task SicherungEinspielenAsync()
+    {
+        string? pfad = await Ui.DateiWaehlenAsync(".zip");
+        if (pfad is null) return;
+        bool ok = await Ui.BestaetigenAsync("Sicherung einspielen",
+            "Alle Klausuren, Gutachten und Einstellungen in diesem Browser werden durch den Inhalt der Sicherung ersetzt. Fortfahren?",
+            "Ersetzen", "Abbrechen");
+        if (!ok) return;
+        try
+        {
+            _takt?.Dispose();
+            await Speicher.SicherungEinspielenAsync(pfad);
+            await Js.InvokeVoidAsync("gutachtentool.neuLaden");
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            Ui.Melden(Meldungsart.Fehler, "Sicherung nicht eingespielt", ex.Message);
+        }
+    }
+
+    // ---------- Hilfen ----------
+
+    internal static string ZahlText(double wert) =>
+        double.IsNaN(wert) ? string.Empty : wert.ToString("0.##", CultureInfo.InvariantCulture);
+
+    internal static double ZahlLesen(string? s, double ersatz) =>
+        double.TryParse((s ?? string.Empty).Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double w) ? w : ersatz;
+
+    static string Groesse(double bytes) => bytes switch
+    {
+        >= 1e9 => (bytes / 1e9).ToString("0.0") + " GB",
+        >= 1e6 => (bytes / 1e6).ToString("0.0") + " MB",
+        _ => (bytes / 1e3).ToString("0") + " kB",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _takt?.Dispose();
+        Ui.Geaendert -= Neuzeichnen;
+        if (_vm is not null) _vm.PropertyChanged -= VmGeaendert;
+        _editorRef?.Dispose();
+        _seitenRef?.Dispose();
+        await Task.CompletedTask;
+    }
+}

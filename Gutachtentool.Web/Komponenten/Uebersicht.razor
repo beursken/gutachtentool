@@ -1,0 +1,81 @@
+@* Seitenleiste „Übersicht“: Kennzahlen, Notenverteilung und bisherige Gutachten der Klausur. *@
+
+<aside class="uebersicht">
+    <div class="leiste">
+        <strong>Übersicht</strong>
+        <span class="abstand"></span>
+        <button class="knopf leise" title="Neu einlesen" @onclick="Aktualisieren">⟳</button>
+    </div>
+
+    @if (Vm.Kennzahlen.Count > 0)
+    {
+        <dl class="kennzahlen">
+            @foreach (Kennzahl k in Vm.Kennzahlen)
+            {
+                <dt>@k.Bezeichnung</dt>
+                <dd>@k.Wert</dd>
+            }
+        </dl>
+    }
+
+    @if (Vm.Verteilung.Count > 0)
+    {
+        <div class="verteilung" aria-label="Notenverteilung">
+            @foreach (VerteilungsBalken b in Vm.Verteilung)
+            {
+                <div class="balken" title="@b.Hinweis">
+                    <div class="saeule @(b.Bestanden ? "bestanden" : "nicht")" style="height:@Px(b.Hoehe)"></div>
+                    <div class="beschriftung">@b.Beschriftung</div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Vm.FortschrittText is { } fortschritt)
+    {
+        <div class="fortschritt">
+            <progress max="@Zahl(Vm.FortschrittMax)" value="@Zahl(Vm.Fortschritt)"></progress>
+            <span>@fortschritt</span>
+        </div>
+    }
+
+    <div class="leiste">
+        <select value="@Vm.UebersichtFilter" @onchange="e => Vm.UebersichtFilter = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)" aria-label="Filter">
+            <option value="0">alle</option>
+            <option value="1">offen</option>
+            <option value="2">bewertet</option>
+        </select>
+        <span class="klein">@Vm.TeilnehmendeHinweis</span>
+    </div>
+
+    <ul class="eintraege">
+        @foreach (UebersichtEintrag e in Vm.Eintraege)
+        {
+            <li @key="e" style="opacity:@Zahl(e.Deckkraft)" title="@e.Hinweis" @onclick="() => Oeffnen(e)">
+                <span class="name">@e.Anzeige</span>
+                <span class="status">@e.Status</span>
+            </li>
+        }
+    </ul>
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public MainViewModel Vm { get; set; } = default!;
+    [Parameter] public Func<Task>? Nachlauf { get; set; }
+
+    static string Px(double wert) => wert.ToString("0.#", CultureInfo.InvariantCulture) + "px";
+
+    static string Zahl(double wert) => wert.ToString("0.##", CultureInfo.InvariantCulture);
+
+    async Task Aktualisieren()
+    {
+        Vm.UebersichtAktualisieren();
+        if (Nachlauf is not null) await Nachlauf();
+    }
+
+    async Task Oeffnen(UebersichtEintrag e)
+    {
+        await Vm.EintragOeffnenAsync(e);
+        if (Nachlauf is not null) await Nachlauf();
+    }
+}

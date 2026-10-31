@@ -1,0 +1,17 @@
+{
+  "name": "Gutachtentool",
+  "short_name": "Gutachten",
+  "description": "Gutachten zu Klausuren mit Textbausteinen erstellen – alle Daten bleiben im Browser.",
+  "lang": "de",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f3ee",
+  "theme_color": "#1f4e5f",
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ]
+}

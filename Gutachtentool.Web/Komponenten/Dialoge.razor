@@ -1,0 +1,146 @@
+@* Dialoge und Meldungen der Browser-Fassung (Gegenstück zu ContentDialog und InfoBar unter Windows). *@
+@implements IDisposable
+@inject WebUi Ui
+
+@if (Ui.Offen is { } offen)
+{
+    <div class="dialoghintergrund" @onkeydown="Taste">
+        <div class="dialog @(offen is KonfigurationDialog ? "breit" : "")" role="dialog" aria-modal="true" aria-label="@offen.Titel">
+            <h2>@offen.Titel</h2>
+            @switch (offen)
+            {
+                case FrageDialog f:
+                    <p class="dialogtext">@f.Text</p>
+                    <div class="dialogknoepfe">
+                        @for (int i = 0; i < f.Knoepfe.Count; i++)
+                        {
+                            int n = i;
+                            <button class="knopf @(n == 0 ? "haupt" : "")" @onclick="() => f.Ende.TrySetResult(n == f.Knoepfe.Count - 1 && f.Knoepfe.Count > 1 ? -1 : n)">@f.Knoepfe[n]</button>
+                        }
+                    </div>
+                    break;
+
+                case EingabeDialog e:
+                    <label class="dialogfeld">
+                        <span>@e.Kopf</span>
+                        <textarea rows="4" @bind="e.Wert" @bind:event="oninput" autofocus></textarea>
+                    </label>
+                    <div class="dialogknoepfe">
+                        <button class="knopf haupt" @onclick="() => e.Ende.TrySetResult(e.Wert)">OK</button>
+                        <button class="knopf" @onclick="Ui.Abbrechen">Abbrechen</button>
+                    </div>
+                    break;
+
+                case BausteinDialog b:
+                    <label class="dialogfeld">
+                        <span>Text</span>
+                        <textarea rows="5" @bind="b.Text" @bind:event="oninput" spellcheck="true" lang="de" autofocus></textarea>
+                    </label>
+                    <div class="dialogzeile">
+                        <label class="dialogfeld">
+                            <span>Kürzel (Einfügen mit Kürzel + Tab)</span>
+                            <input @bind="b.Kuerzel" @bind:event="oninput" />
+                        </label>
+                        <label class="dialogfeld schmal">
+                            <span>passend ab Punkten</span>
+                            <input type="number" min="0" max="18" @bind="b.Von" @bind:event="oninput" />
+                        </label>
+                        <label class="dialogfeld schmal">
+                            <span>bis Punkten</span>
+                            <input type="number" min="0" max="18" @bind="b.Bis" @bind:event="oninput" />
+                        </label>
+                    </div>
+                    @if (b.Fehler is { } fb)
+                    {
+                        <p class="fehlertext">@fb</p>
+                    }
+                    <div class="dialogknoepfe">
+                        <button class="knopf haupt" @onclick="() => Ui.BausteinUebernehmen(b)">Speichern</button>
+                        <button class="knopf" @onclick="Ui.Abbrechen">Abbrechen</button>
+                    </div>
+                    break;
+
+                case KonfigurationDialog k:
+                    <p class="hinweiszeile">
+                        Gilt nur für diese Klausur (Klausur.json; wird mit Paketen weitergegeben). Teilpunkte erscheinen am Platzhalter ###TEILPUNKTE###
+                        der Word-Vorlage, sonst nach dem Gutachtentext. Mit Rohpunkteschema erscheint der Bewertungsbogen am Platzhalter ###BEWERTUNGSBOGEN### oder am Ende.
+                    </p>
+                    <label class="schalter"><input type="checkbox" @bind="k.TeilpunkteAusgeben" /> Teilpunkte im Gutachten ausgeben</label>
+                    <label class="schalter"><input type="checkbox" @bind="k.BogenPunkteAusgeben" /> Rohpunkteschema: Punkte im Bewertungsbogen ausgeben (sonst nur die Anmerkungen)</label>
+                    <label class="dialogfeld">
+                        <span>Aufgaben – je Zeile „Bezeichnung; Höchstpunkte“</span>
+                        <textarea class="fest" rows="4" @bind="k.Aufgaben" placeholder="Aufgabe 1; 20&#10;Aufgabe 2; 15"></textarea>
+                    </label>
+                    <label class="dialogfeld">
+                        <span>Notenschlüssel (optional) – Mindest-Rohpunkte für 1, 2, … 18 Punkte, durch „;“ getrennt</span>
+                        <input @bind="k.Schluessel" placeholder="leer = linear nach Anteil an der Höchstpunktzahl" />
+                    </label>
+                    <label class="dialogfeld">
+                        <span>Formalkriterien – „+Bezeichnung | Satzvorlage“, darunter je Zeile eine Stufe</span>
+                        <textarea class="fest" rows="9" @bind="k.Kriterien"></textarea>
+                    </label>
+                    <p class="hinweiszeile">
+                        Satzvorlage: {wert} = gewählte Stufe, {subjekt} = „Die 12-seitige Arbeit“ beim ersten und „Sie“ bei weiteren Sätzen, {seiten} = Seitenzahl.
+                    </p>
+                    @if (k.Fehler is { } fk)
+                    {
+                        <p class="fehlertext">@fk</p>
+                    }
+                    <div class="dialogknoepfe">
+                        <button class="knopf haupt" @onclick="() => Ui.KonfigurationUebernehmen(k)">Speichern</button>
+                        <button class="knopf" @onclick="Ui.Abbrechen">Abbrechen</button>
+                    </div>
+                    break;
+
+                case DateiDialog d:
+                    <p class="dialogtext">
+                        Datei wählen@(d.Endungen.Count > 0 ? $" ({string.Join(", ", d.Endungen)})" : string.Empty).
+                        Die Datei wird nur in diesem Browser verarbeitet, nicht hochgeladen.
+                    </p>
+                    <InputFile accept="@string.Join(",", d.Endungen)" OnChange="e => Ui.DateiAnnehmenAsync(d, e.File)" disabled="@d.Laedt" />
+                    @if (d.Laedt)
+                    {
+                        <p>Wird gelesen …</p>
+                    }
+                    @if (d.Fehler is { } fd)
+                    {
+                        <p class="fehlertext">@fd</p>
+                    }
+                    <div class="dialogknoepfe">
+                        <button class="knopf" @onclick="Ui.Abbrechen">Abbrechen</button>
+                    </div>
+                    break;
+            }
+        </div>
+    </div>
+}
+
+<div class="meldungen" aria-live="polite">
+    @foreach (Meldung m in Ui.Meldungen)
+    {
+        <div class="meldung @m.Art.ToString().ToLowerInvariant()" @key="m.Id">
+            <div class="meldungstext">
+                <strong>@m.Titel</strong>
+                <span>@m.Text</span>
+            </div>
+            @if (m.Aktion is { } aktion && m.BeiAktion is { } beiAktion)
+            {
+                <button class="knopf leise" @onclick="() => { beiAktion(); Ui.MeldungSchliessen(m); }">@aktion</button>
+            }
+            <button class="schliessen" title="Schließen" @onclick="() => Ui.MeldungSchliessen(m)">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Ui.Geaendert += Neuzeichnen;
+
+    void Neuzeichnen() => _ = InvokeAsync(StateHasChanged);
+
+    void Taste(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") Ui.Abbrechen();
+    }
+
+    public void Dispose() => Ui.Geaendert -= Neuzeichnen;
+}
