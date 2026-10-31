@@ -21,18 +21,21 @@ mit `Gutachtentool-<Version>-AppleSilicon.dmg` und `…-Intel.dmg`. Ohne Secrets
 Voraussetzung: Apple Developer Program, Rolle **Account Holder** (nur diese darf Developer-ID-Zertifikate anlegen).
 OpenSSL ist in Git für Windows enthalten (`C:\Program Files\Git\usr\bin\openssl.exe`).
 
-1. **Schlüssel und Zertifikatsanforderung** (PowerShell, in einem sicheren Ordner außerhalb des Repositorys):
+1. **Schlüssel und Zertifikatsanforderung** (PowerShell, in einem sicheren Ordner außerhalb des Repositorys).
+   Zuerst eine Minimal-Konfiguration setzen (sonst sucht OpenSSL `C:\Program Files\Common Files\ssl\openssl.cnf`):
    ```
+   Set-Content openssl.cnf "[req]`ndistinguished_name = dn`n[dn]" -Encoding ascii
+   $env:OPENSSL_CONF = (Resolve-Path openssl.cnf).Path
    openssl req -new -newkey rsa:2048 -nodes -keyout gutachtentool.key -out gutachtentool.csr -subj "/CN=Michael Beurskens/C=DE"
    ```
 2. developer.apple.com › Certificates › „+“ › **Developer ID Application** › Profiltyp „G2 Sub-CA“ › `gutachtentool.csr` hochladen
    › Zertifikat (`developerID_application.cer`) herunterladen. Dazu von https://www.apple.com/certificateauthority/
    „Developer ID – G2“ (`DeveloperIDG2CA.cer`) herunterladen.
-3. **.p12 erzeugen** (Kennwort frei wählen; `-legacy`, damit macOS die Datei lesen kann):
+3. **.p12 erzeugen** (Kennwort frei wählen; ältere Verschlüsselung, damit macOS die Datei lesen kann):
    ```
    openssl x509 -inform DER -in developerID_application.cer -out zertifikat.pem
    openssl x509 -inform DER -in DeveloperIDG2CA.cer -out zwischen.pem
-   openssl pkcs12 -export -legacy -inkey gutachtentool.key -in zertifikat.pem -certfile zwischen.pem -out gutachtentool.p12
+   openssl pkcs12 -export -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -inkey gutachtentool.key -in zertifikat.pem -certfile zwischen.pem -out gutachtentool.p12
    ```
 4. **API-Schlüssel für die Notarisierung:** App Store Connect › Benutzer und Zugriff › Integrationen › App Store Connect API
    › Teamschlüssel „+“ (Rolle „Developer“) › `AuthKey_XXXXXXXXXX.p8` herunterladen; **Key ID** und **Issuer ID** notieren.

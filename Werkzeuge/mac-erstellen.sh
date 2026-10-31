@@ -13,6 +13,19 @@ cd "$(dirname "$0")/.."
 WURZEL="$(pwd)"
 TEMPORAER="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 
+# Ausgabe mitschreiben; bei einem Fehler die letzten Zeilen als Annotation melden (im Lauf unter „Annotations“ sichtbar).
+PROTOKOLL="$TEMPORAER/mac-protokoll.txt"
+exec > >(tee "$PROTOKOLL") 2>&1
+fehlerMelden() {
+  local code=$? zeile=$1
+  sleep 1
+  local ende
+  ende=$(tail -n 60 "$PROTOKOLL" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS="%0A"} {print}')
+  echo "::error title=mac-erstellen.sh, Zeile ${zeile}::${ende}"
+  exit $code
+}
+trap 'fehlerMelden $LINENO' ERR
+
 if [ ! -d Gutachtentool.Mac ]; then
   echo "Gutachtentool.Mac fehlt – übersprungen."
   exit 0
@@ -29,7 +42,7 @@ mkdir -p "$ICONSET"
 QUELLE="Gutachtentool.Web/wwwroot/icon-512.png"
 for g in 16 32 128 256 512; do
   sips -z $g $g "$QUELLE" --out "$ICONSET/icon_${g}x${g}.png" >/dev/null
-  d=$((g * 2)); [ $d -gt 512 ] && d=512
+  d=$((g * 2))
   sips -z $d $d "$QUELLE" --out "$ICONSET/icon_${g}x${g}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$AUSGABE/Gutachtentool.icns"
