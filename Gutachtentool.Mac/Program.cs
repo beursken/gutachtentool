@@ -49,6 +49,10 @@ static class Program
             e.SetObserved();
         };
 
+        // Doppelklick auf .gtpaket: vor dem Start der Ereignisschleife einrichten, damit auch die Datei ankommt,
+        // mit der das Programm gestartet wird.
+        MacDokumente.Einrichten(args);
+
         app.Run();
     }
 }

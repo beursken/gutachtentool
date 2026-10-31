@@ -18,8 +18,8 @@ jobs:
     name: Kern (Gutachten2025.Core)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - run: dotnet build Gutachten2025.Core/Gutachten2025.Core.csproj -c Release
@@ -29,8 +29,8 @@ jobs:
     runs-on: windows-latest
     needs: kern
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Inno Setup installieren
@@ -38,7 +38,7 @@ jobs:
       - name: Installationsprogramm erstellen
         shell: pwsh
         run: ./Installer/Erstellen.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: Gutachtentool-Windows
           path: Installer/Ausgabe/*.exe
@@ -49,25 +49,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: kern
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Veröffentlichen
         run: bash Werkzeuge/web-erstellen.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: Gutachtentool-Web
           path: publish/web/wwwroot
           if-no-files-found: ignore
 
   mac:
-    name: macOS (Avalonia, signiert und notarisiert)
+    name: macOS (signiert und notarisiert)
     runs-on: macos-latest
     needs: kern
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Programm erstellen, signieren, notarisieren
@@ -78,7 +78,7 @@ jobs:
           MAC_NOTAR_SCHLUESSEL: ${{ secrets.MAC_NOTAR_SCHLUESSEL }}
           MAC_NOTAR_SCHLUESSEL_ID: ${{ secrets.MAC_NOTAR_SCHLUESSEL_ID }}
           MAC_NOTAR_AUSSTELLER: ${{ secrets.MAC_NOTAR_AUSSTELLER }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: Gutachtentool-Mac
           path: publish/mac/*.dmg

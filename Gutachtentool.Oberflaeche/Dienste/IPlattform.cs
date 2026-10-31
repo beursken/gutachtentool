@@ -33,4 +33,10 @@ public interface IPlattform
 
     /// <summary>Beliebige Daten als Datei ausgeben (Browser: herunterladen; Mac: Speichern-Dialog).</summary>
     Task AusgebenAsync(string name, byte[] daten);
+
+    /// <summary>
+    /// Von außen geöffnete Pakete (Mac: Doppelklick im Finder) an <paramref name="oeffnen"/> übergeben;
+    /// vor dem Aufruf eingegangene Dateien werden nachgereicht. Browser: keine.
+    /// </summary>
+    void DateienAbonnieren(Func<string, Task> oeffnen);
 }

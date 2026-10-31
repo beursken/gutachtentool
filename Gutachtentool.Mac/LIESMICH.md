@@ -7,7 +7,8 @@ Natives Programmfenster (Photino, WebKit) mit derselben Oberfläche wie die Brow
   den auch die Windows-Fassung nutzt). Einstellungen und Entwurf: `~/Library/Application Support/Gutachtentool`.
 - Word, Excel und Finder öffnen Gutachten, Notenliste, Vorlagen und Ordner („open“).
 - Rechtschreibprüfung und Diktat von macOS im Gutachtentext und in den Anmerkungen; Fett/Kursiv mit ⌘B/⌘I bzw. Strg+B/I.
-- Noch nicht: `.gtpaket` per Doppelklick öffnen (Paket über „Klausur › Paket öffnen …“ laden), Drucken über Word.
+- `.gtpaket` per Doppelklick im Finder öffnen (Dateityp `de.uni-passau.jura.gutachtentool.paket`, `MacDokumente.cs`)
+  oder über „Klausur › Paket öffnen …“. Noch nicht: Drucken über Word.
 - Mindestens macOS 12; getrennte Fassungen für Apple Silicon und Intel.
 
 ## Erstellen

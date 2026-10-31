@@ -331,6 +331,13 @@
             _seitenRef = DotNetObjectReference.Create(this);
             await Js.InvokeVoidAsync("gutachtentool.beimVerlassen", _seitenRef);
             _takt = new Timer(_ => _ = InvokeAsync(TaktAsync), null, 3000, 3000);
+            // Mac: per Doppelklick geöffnete Pakete (auch das, mit dem das Programm gestartet wurde)
+            Plattform.DateienAbonnieren(pfad => InvokeAsync(async () =>
+            {
+                if (_vm is null) return;
+                await _vm.PaketImportierenAsync(pfad);
+                await Nachlauf();
+            }));
         }
     }
 

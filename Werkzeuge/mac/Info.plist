@@ -26,6 +26,49 @@
     <string>public.app-category.education</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Gutachtentool-Paket</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>CFBundleTypeIconFile</key>
+            <string>Gutachtentool</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>de.uni-passau.jura.gutachtentool.paket</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>de.uni-passau.jura.gutachtentool.paket</string>
+            <key>UTTypeDescription</key>
+            <string>Gutachtentool-Paket</string>
+            <key>UTTypeIconFile</key>
+            <string>Gutachtentool</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>gtpaket</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>application/x-gutachtentool-paket</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
     <key>NSHumanReadableCopyright</key>
     <string>Prof. Dr. Michael Beurskens, Universität Passau</string>
 </dict>

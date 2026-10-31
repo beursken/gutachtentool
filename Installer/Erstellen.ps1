@@ -44,10 +44,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Inno Setup fehlgeschlagen.' }
 $setup = Join-Path $PSScriptRoot "Ausgabe\Gutachtentool-Setup-$Version.exe"
 Write-Host "Fertig: $setup"
 
-# Für die Download-Seite von WebVote (/download und KI-Portal › Werkzeuge) unter festem Namen ablegen.
-# Danach WebVote neu veröffentlichen (MapStaticAssets kennt nur Dateien, die beim Build vorhanden waren).
-$webvote = Join-Path $PSScriptRoot '..\..\WebVote\WebVote2026\wwwroot\Content'
-if (Test-Path $webvote) {
-    Copy-Item $setup (Join-Path $webvote 'Gutachtentool-Setup.exe') -Force
-    Write-Host "Kopiert nach $webvote\Gutachtentool-Setup.exe – WebVote neu veröffentlichen."
-}
+# Verteilung über die Download-Seite: nicht dieses Inno-Setup, sondern das gemeinsame Lehre-Setup
+# (InteractX\Lehre.Setup\Veroeffentlichen.ps1, aufgerufen von Werkzeuge\Verteilen.ps1). Dieses Setup bleibt für Tests und GitHub Actions.

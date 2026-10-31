@@ -146,6 +146,9 @@ public sealed class WebPlattform : IPlattform, IBrowserSicherung
 
     public Task AusgebenAsync(string name, byte[] daten) => HerunterladenAsync(name, daten);
 
+    /// <summary>Im Browser gibt es keine von außen geöffneten Dateien.</summary>
+    public void DateienAbonnieren(Func<string, Task> oeffnen) { }
+
     async Task HerunterladenAsync(string name, byte[] daten) =>
         await _js.InvokeVoidAsync("gutachtentool.herunterladen", name, Dateityp(name), daten);
 

@@ -77,7 +77,14 @@ fi
 
 NOTAR=""
 if [ -n "$IDENTITAET" ] && [ -n "${MAC_NOTAR_SCHLUESSEL:-}" ]; then
-  echo "$MAC_NOTAR_SCHLUESSEL" | base64 --decode > "$TEMPORAER/AuthKey.p8"
+  # Leerzeichen und Zeilenumbrüche aus kopierten Werten entfernen
+  SCHLUESSEL_ID=$(printf '%s' "${MAC_NOTAR_SCHLUESSEL_ID:-}" | tr -d '[:space:]')
+  AUSSTELLER=$(printf '%s' "${MAC_NOTAR_AUSSTELLER:-}" | tr -d '[:space:]')
+  [ -n "$SCHLUESSEL_ID" ] || { echo "::error title=Secret fehlt::MAC_NOTAR_SCHLUESSEL_ID ist leer oder nicht angelegt." >&3; exit 1; }
+  [ -n "$AUSSTELLER" ] || { echo "::error title=Secret fehlt::MAC_NOTAR_AUSSTELLER ist leer oder nicht angelegt." >&3; exit 1; }
+  printf '%s' "$MAC_NOTAR_SCHLUESSEL" | tr -d '[:space:]' | base64 --decode > "$TEMPORAER/AuthKey.p8"
+  grep -q "BEGIN PRIVATE KEY" "$TEMPORAER/AuthKey.p8" || { echo "::error title=Secret fehlerhaft::MAC_NOTAR_SCHLUESSEL ist keine base64-kodierte .p8-Datei." >&3; exit 1; }
+  echo "::notice title=Mac-Build::Notarisierung mit Key ID ${SCHLUESSEL_ID} (Aussteller ${AUSSTELLER:0:8}…)" >&3
   NOTAR=1
 fi
 
@@ -103,7 +110,7 @@ for RID in osx-arm64 osx-x64; do
 
   phase "Signieren $RID"
   if [ -n "$IDENTITAET" ]; then
-    # Erst alle Dateien einzeln (Bibliotheken, Programm), dann das Bündel
+    # Erst alle Dateien außer dem Hauptprogramm einzeln, dann das Bündel (signiert das Hauptprogramm mit)
     while IFS= read -r datei; do
       if ! ausgabe=$(signieren "$datei" 2>&1); then
         echo "::error title=codesign::${datei#$APP/}: $(echo "$ausgabe" | tr '\n' ' ' | cut -c1-900)" >&3
@@ -127,8 +134,18 @@ for RID in osx-arm64 osx-x64; do
   fi
   if [ -n "$NOTAR" ]; then
     phase "Notarisieren $RID"
-    xcrun notarytool submit "$DMG" --key "$TEMPORAER/AuthKey.p8" \
-      --key-id "${MAC_NOTAR_SCHLUESSEL_ID:-}" --issuer "${MAC_NOTAR_AUSSTELLER:-}" --wait --timeout 30m
+    if ! ausgabe=$(xcrun notarytool submit "$DMG" --key "$TEMPORAER/AuthKey.p8" \
+          --key-id "$SCHLUESSEL_ID" --issuer "$AUSSTELLER" --wait 2>&1); then
+      echo "::error title=notarytool::$(echo "$ausgabe" | tr '\n' ' ' | cut -c1-900)" >&3
+      exit 1
+    fi
+    echo "$ausgabe"
+    if ! echo "$ausgabe" | grep -q "status: Accepted"; then
+      id=$(echo "$ausgabe" | sed -n 's/^ *id: //p' | head -1)
+      protokoll=$(xcrun notarytool log "$id" --key "$TEMPORAER/AuthKey.p8" --key-id "$SCHLUESSEL_ID" --issuer "$AUSSTELLER" 2>&1 | tr '\n' ' ' | cut -c1-900)
+      echo "::error title=Notarisierung abgelehnt::$protokoll" >&3
+      exit 1
+    fi
     xcrun stapler staple "$DMG"
     spctl --assess --type open --context context:primary-signature -v "$DMG" || true
   fi

@@ -22,6 +22,13 @@ public sealed class MacPlattform : IPlattform
 
     public Task NachlaufAsync() => Task.CompletedTask;
 
+    /// <summary>Doppelklick auf .gtpaket im Finder (MacDokumente); richtet die Übergabe erneut ein, falls Photino den Delegate erst spät setzt.</summary>
+    public void DateienAbonnieren(Func<string, Task> oeffnen)
+    {
+        MacDokumente.Einrichten();
+        MacDokumente.Abonnieren(oeffnen);
+    }
+
     public async Task<string?> DateiWaehlenAsync(IReadOnlyList<string> endungen)
     {
         string typen = endungen.Count == 0
