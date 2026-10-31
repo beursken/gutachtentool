@@ -33,9 +33,9 @@ public sealed class Klausurkonfiguration
 
     /// <summary>
     /// Bewertungsbogen (Rohpunkteschema) mit Punkten je Gliederungspunkt, Zwischen- und Gesamtsumme.
-    /// false = nur die Anmerkungen zu den Gliederungspunkten, ohne Punkte. Fehlt der Wert in Klausur.json: true.
+    /// false (Vorgabe) = nur die Anmerkungen zu den Gliederungspunkten, ohne Punkte. Fehlt der Wert in Klausur.json: false.
     /// </summary>
-    public bool BogenPunkteAusgeben { get; set; } = true;
+    public bool BogenPunkteAusgeben { get; set; }
 
     public List<Aufgabe> Aufgaben { get; set; } = new();
 
