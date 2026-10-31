@@ -109,7 +109,7 @@ for RID in osx-arm64 osx-x64; do
         echo "::error title=codesign::${datei#$APP/}: $(echo "$ausgabe" | tr '\n' ' ' | cut -c1-900)" >&3
         exit 1
       fi
-    done < <(find "$APP/Contents/MacOS" -type f)
+    done < <(find "$APP/Contents/MacOS" -type f ! -path "$APP/Contents/MacOS/Gutachtentool")
     signieren "$APP"
     codesign --verify --deep --strict --verbose=2 "$APP" || echo "::warning title=Mac-Build::codesign --verify meldet Abweichungen ($RID)" >&3
   fi
