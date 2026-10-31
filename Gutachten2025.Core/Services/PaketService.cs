@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Packaging;
 using Gutachten2025.Models;
 using System;
 using System.Collections.Generic;
@@ -214,11 +215,13 @@ public static class PaketService
     {
         try
         {
+            // Hauptteil über die Beziehungen des Pakets suchen, nicht über den Teilnamen (xl/workbook.xml):
+            // Das Open XML SDK und andere Programme dürfen ihn anders benennen.
             using var ms = new MemoryStream(daten);
-            using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            if (zip.GetEntry("xl/workbook.xml") is null)
+            using SpreadsheetDocument d = SpreadsheetDocument.Open(ms, false);
+            if (d.WorkbookPart?.Workbook is null)
                 throw new PaketFehler($"„{name}“ ist keine Excel-Datei.");
-            if (zip.Entries.Any(e => e.FullName.EndsWith("vbaProject.bin", StringComparison.OrdinalIgnoreCase)))
+            if (d.WorkbookPart.VbaProjectPart is not null)
                 throw new PaketFehler($"„{name}“ enthält Makros und wird aus Sicherheitsgründen nicht importiert.");
         }
         catch (PaketFehler) { throw; }
@@ -232,11 +235,13 @@ public static class PaketService
     {
         try
         {
+            // Hauptteil über die Beziehungen des Pakets suchen, nicht über den Teilnamen (word/document.xml):
+            // Vom KI-Portal erzeugte Dateien heißen z. B. word/document2.xml.
             using var ms = new MemoryStream(daten);
-            using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            if (zip.GetEntry("word/document.xml") is null)
+            using WordprocessingDocument d = WordprocessingDocument.Open(ms, false);
+            if (d.MainDocumentPart?.Document is null)
                 throw new PaketFehler($"„{name}“ ist keine Word-Datei.");
-            if (zip.Entries.Any(e => e.FullName.EndsWith("vbaProject.bin", StringComparison.OrdinalIgnoreCase)))
+            if (d.MainDocumentPart.VbaProjectPart is not null)
                 throw new PaketFehler($"„{name}“ enthält Makros und wird aus Sicherheitsgründen nicht importiert.");
         }
         catch (PaketFehler) { throw; }

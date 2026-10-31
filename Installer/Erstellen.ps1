@@ -4,13 +4,16 @@
   2. kompiliert Gutachtentool.iss mit Inno Setup 6.
   Aufruf im Ordner Installer:  .\Erstellen.ps1      (Version aus <Version> der csproj)
                                .\Erstellen.ps1 -Kompakt   (zusätzlich Trimmen der .NET-/Windows-Bibliotheken – danach gründlich testen)
+  Signieren (GitHub Actions, SignPath): erst  -NurVeroeffentlichen  (Programmdateien nach publish\x64),
+  dort die eigenen Dateien signieren lassen, dann  -OhneVeroeffentlichen  (Setup aus den signierten Dateien).
 #>
-param([string]$Version, [switch]$Kompakt)
+param([string]$Version, [switch]$Kompakt, [switch]$NurVeroeffentlichen, [switch]$OhneVeroeffentlichen)
 $ErrorActionPreference = 'Stop'
 
 $projekt = Join-Path $PSScriptRoot '..\Gutachten2025\Gutachten2025.csproj'
 $quelle  = Join-Path $PSScriptRoot 'publish\x64'
 
+if (-not $OhneVeroeffentlichen) {
 if (Test-Path $quelle) { Remove-Item $quelle -Recurse -Force }
 dotnet publish $projekt -c Release -r win-x64 -p:Platform=x64 `
     -p:WindowsPackageType=None -p:WindowsAppSDKSelfContained=true -p:SelfContained=true `
@@ -23,10 +26,13 @@ Write-Host "Veröffentlicht: $mb MB in $quelle"
 if (Test-Path (Join-Path $quelle 'onnxruntime.dll')) {
     Write-Warning 'KI-Bestandteile des Windows App SDK sind noch enthalten (onnxruntime.dll) – Ausschluss in der csproj greift nicht.'
 }
+}
 
 foreach ($datei in 'Gutachten2025.exe', 'MUSTER.docx', 'MUSTER.xlsx', 'Texte.txt', 'Rohpunkte-Muster.xlsx') {
     if (-not (Test-Path (Join-Path $quelle $datei))) { throw "$datei fehlt im Veröffentlichungsordner." }
 }
+
+if ($NurVeroeffentlichen) { return }
 
 if (-not $Version) {
     $Version = (Get-Item (Join-Path $quelle 'Gutachten2025.exe')).VersionInfo.ProductVersion -replace '\+.*$', ''

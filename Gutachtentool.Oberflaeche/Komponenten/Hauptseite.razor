@@ -54,6 +54,7 @@
                             <button @onclick="() => Los(_vm.RohpunkteInExcelBearbeitenCommand)">Rohpunkteschema in Excel @Oeffnen</button>
                             <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema @Laden …</button>
                             <hr />
+                            <button @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)" title="Im KI-Portal aus Sachverhalt und Lösung ein Paket erzeugen">Klausurinformationen vorbereiten (KI-Portal)</button>
                             <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
                             <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
                         </div>
@@ -116,7 +117,8 @@
                     }
                     else if (_vm.KeineBausteine)
                     {
-                        <p class="leer">Noch keine Textbausteine. „+ Baustein“ legt einen an; ein Paket aus dem KI-Portal bringt fertige mit.</p>
+                        <p class="leer">Noch keine Textbausteine. „+ Baustein“ legt einen an; ein Paket aus dem KI-Portal bringt fertige mit
+                            (<button class="verweis" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)">Klausurinformationen vorbereiten</button>).</p>
                     }
                     else if (_vm.KeineTreffer)
                     {

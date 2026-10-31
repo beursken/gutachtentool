@@ -92,6 +92,10 @@
                             <MenuFlyoutItem Text="Formulierungsdatei bearbeiten" Command="{x:Bind ViewModel.FormulierungenBearbeitenCommand}"/>
                             <MenuFlyoutItem Text="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
                             <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Klausurinformationen vorbereiten (KI-Portal)" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"
+                                            ToolTipService.ToolTip="Im KI-Portal aus Sachverhalt und Lösung ein Paket erzeugen: Vorlage, Textbausteine, Rohpunkteschema, Erwartungshorizont">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE774;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
                             <MenuFlyoutItem Text="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8B5;"/></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
@@ -248,6 +252,7 @@
                                 <Button Content="Neuer Baustein…" Command="{x:Bind ViewModel.NeuerBausteinOhneBezugCommand}"/>
                                 <Button Content="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
                                 <Button Content="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
+                                <HyperlinkButton Content="Klausurinformationen im KI-Portal vorbereiten" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"/>
                             </StackPanel>
                             <TextBlock Grid.Row="2" Margin="4,16" Text="Keine Treffer." Opacity="0.7" VerticalAlignment="Top"
                                        Visibility="{x:Bind ViewModel.KeineTreffer, Mode=OneWay}"/>

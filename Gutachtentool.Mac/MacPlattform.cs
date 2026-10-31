@@ -53,6 +53,11 @@ public sealed class MacPlattform : IPlattform
 
     public async Task OeffnenAsync(string pfad)
     {
+        if (pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            await AusfuehrenAsync("/usr/bin/open", pfad); // Standardbrowser
+            return;
+        }
         if (!File.Exists(pfad) && !Directory.Exists(pfad))
             throw new FileNotFoundException("Nicht gefunden: " + pfad);
         await AusfuehrenAsync("/usr/bin/open", pfad);

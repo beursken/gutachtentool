@@ -352,6 +352,10 @@ public sealed partial class MainViewModel
         if (pfad is not null) await PaketImportierenAsync(pfad);
     }
 
+    /// <summary>Öffnet im KI-Portal die Seite zum Erzeugen eines Pakets (Klausurinformationen vorbereiten).</summary>
+    [RelayCommand]
+    void KlausurinformationenVorbereiten() => _ui.Oeffnen(Verweise.Gutachtenpaket);
+
     /// <summary>Importiert ein Paket (auch per Doppelklick); vorhandene Vorlagen werden gesichert, Noten bleiben unberührt.</summary>
     public async Task PaketImportierenAsync(string pfad)
     {

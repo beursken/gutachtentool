@@ -137,6 +137,11 @@ public sealed class WebPlattform : IPlattform, IBrowserSicherung
 
     public async Task OeffnenAsync(string pfad)
     {
+        if (pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            await _js.InvokeVoidAsync("open", pfad, "_blank", "noopener");
+            return;
+        }
         if (Directory.Exists(pfad))
             throw new InvalidOperationException(
                 "Im Browser gibt es keine Ordner. Einzelne Dateien stehen im Menü „Klausur“ bereit, alle Daten unter „Daten › Sicherung herunterladen“.");

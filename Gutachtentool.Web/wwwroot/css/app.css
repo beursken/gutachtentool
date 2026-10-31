@@ -266,3 +266,6 @@ input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid va
     .rp-summe { grid-column: 1; }
     .editor { padding: 18px; }
 }
+
+/* Verweis im Fließtext, als Schaltfläche (öffnet eine Seite über die Plattform) */
+.verweis { border: 0; background: none; padding: 0; color: var(--akzent); text-decoration: underline; cursor: pointer; font: inherit; }

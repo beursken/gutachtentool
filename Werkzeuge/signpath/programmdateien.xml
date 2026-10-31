@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath-Artefaktkonfiguration „programmdateien“ (in SignPath unter Project › Artifact configurations anlegen).
+     Signiert nur die eigenen Dateien des Gutachtentools; .NET- und Windows-App-SDK-Dateien sind von Microsoft signiert
+     und bleiben unverändert. product-version bei jeder neuen Version anpassen (csproj <Version>). -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="Gutachten2025.exe" product-name="Gutachtentool" product-version="1.3.0">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file-set>
+      <include path="Gutachten2025.dll" product-name="Gutachtentool" product-version="1.3.0" />
+      <include path="Gutachten2025.Core.dll" product-name="Gutachtentool" product-version="1.3.0" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>
