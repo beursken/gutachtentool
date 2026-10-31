@@ -30,8 +30,10 @@ public sealed class GutachtenService
     /// <param name="absaetze">Gutachtentext je Absatz mit Fett/Kursiv.</param>
     /// <param name="anhang">Absatz nach dem Freitext, wenn die Vorlage keinen Platzhalter ###TEILPUNKTE### enthält.</param>
     /// <param name="bogen">Anhang „Bewertungsbogen“ (am Platzhalter ###BEWERTUNGSBOGEN### oder am Ende); null = keiner.</param>
+    /// <param name="bogenMitPunkten">false = Anhang „Anmerkungen zur Bewertung“ (Zeilen ohne Punkte).</param>
     public void Erzeugen(string vorlage, string ziel, IReadOnlyList<IReadOnlyList<TextLauf>> absaetze,
-        IReadOnlyDictionary<string, string> platzhalter, string? anhang = null, IReadOnlyList<BogenZeile>? bogen = null)
+        IReadOnlyDictionary<string, string> platzhalter, string? anhang = null, IReadOnlyList<BogenZeile>? bogen = null,
+        bool bogenMitPunkten = true)
     {
         string tmp = ziel + ".tmp";
         File.Copy(vorlage, tmp, overwrite: true);
@@ -49,7 +51,7 @@ public sealed class GutachtenService
                     text.Add(new[] { new TextLauf(anhang) });
 
                 FreitextEinsetzen(body, text);
-                BogenEinsetzen(body, bogen);
+                BogenEinsetzen(body, bogen, bogenMitPunkten);
 
                 var alle = new Dictionary<string, string>(platzhalter);
                 alle.TryAdd(TeilpunkteMarke, string.Empty);
@@ -153,7 +155,7 @@ public sealed class GutachtenService
     const string Tabellenschrift = "20"; // 10 pt
     const string Randfarbe = "A6A6A6";
 
-    static void BogenEinsetzen(Body body, IReadOnlyList<BogenZeile>? bogen)
+    static void BogenEinsetzen(Body body, IReadOnlyList<BogenZeile>? bogen, bool mitPunkten)
     {
         Paragraph? marke = Absaetze(body).FirstOrDefault(p => Inhalt(p).Contains(BogenMarke, StringComparison.Ordinal));
         if (bogen is not { Count: > 0 })
@@ -167,8 +169,8 @@ public sealed class GutachtenService
             new Paragraph(
                 new ParagraphProperties(new KeepNext(), new SpacingBetweenLines { After = "160" }),
                 new Run(new RunProperties(new Bold(), new FontSize { Val = "28" }, new FontSizeComplexScript { Val = "28" }),
-                    new Text("Anhang: Bewertungsbogen"))),
-            Tabelle(bogen),
+                    new Text(mitPunkten ? "Anhang: Bewertungsbogen" : "Anhang: Anmerkungen zur Bewertung"))),
+            Tabelle(bogen, mitPunkten ? "Bewertung" : "Anmerkungen"),
         };
 
         if (marke is not null)
@@ -187,7 +189,7 @@ public sealed class GutachtenService
         }
     }
 
-    static Table Tabelle(IReadOnlyList<BogenZeile> zeilen)
+    static Table Tabelle(IReadOnlyList<BogenZeile> zeilen, string spalte)
     {
         BorderType Rand<T>() where T : BorderType, new() => new T { Val = BorderValues.Single, Size = 4U, Color = Randfarbe };
         var tabelle = new Table(
@@ -206,7 +208,7 @@ public sealed class GutachtenService
         // Kopfzeile, auf jeder Seite wiederholt
         tabelle.Append(Zeile(kopf: true, schattierung: "D9D9D9",
             Zelle(1800, Absatz(new[] { new TextLauf("Gliederungspunkt", true) })),
-            Zelle(3200, Absatz(new[] { new TextLauf("Bewertung", true) }))));
+            Zelle(3200, Absatz(new[] { new TextLauf(spalte, true) }))));
 
         foreach (BogenZeile z in zeilen)
         {

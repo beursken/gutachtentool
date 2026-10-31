@@ -302,17 +302,23 @@ public sealed partial class MainViewModel
 
     // ---------- Ausgabe ----------
 
-    /// <summary>Anhang „Bewertungsbogen“; null, wenn kein Schema oder keine Zeile einen Wert enthält.</summary>
+    static IReadOnlyList<IReadOnlyList<TextLauf>> BogenKommentar(RohpunktZeile z) =>
+        z.HatKommentar
+            ? TextNormalizer.FormatierteAbsaetze(FormatierterText.AusLaeufen(z.Kommentar)).Cast<IReadOnlyList<TextLauf>>().ToList()
+            : Array.Empty<IReadOnlyList<TextLauf>>();
+
+    /// <summary>
+    /// Anhang „Bewertungsbogen“; null, wenn kein Schema oder keine Zeile einen Wert enthält.
+    /// Ohne Punkte (Klausureinstellung): nur Gliederungspunkte mit Anmerkung samt übergeordneten Überschriften.
+    /// </summary>
     IReadOnlyList<BogenZeile>? Bewertungsbogen()
     {
         if (_schema is null) return null;
+        if (!_konfiguration.BogenPunkteAusgeben) return Anmerkungsbogen();
         Rohpunkteschema.Summe s = Rohpunkteschema.Berechnen(Rohpunktzeilen);
         if (!s.HatEingaben) return null;
 
-        static IReadOnlyList<IReadOnlyList<TextLauf>> Kommentar(RohpunktZeile z) =>
-            z.HatKommentar
-                ? TextNormalizer.FormatierteAbsaetze(FormatierterText.AusLaeufen(z.Kommentar)).Cast<IReadOnlyList<TextLauf>>().ToList()
-                : Array.Empty<IReadOnlyList<TextLauf>>();
+        static IReadOnlyList<IReadOnlyList<TextLauf>> Kommentar(RohpunktZeile z) => BogenKommentar(z);
 
         var bogen = new List<BogenZeile>();
         foreach (RohpunktZeile z in Rohpunktzeilen)
@@ -344,6 +350,46 @@ public sealed partial class MainViewModel
             : $"{Zahl.Text(s.Gesamt)} / {Zahl.Text(s.Max)}";
         bogen.Add(new BogenZeile(BogenArt.Summe, "Summe", 0, summe, Array.Empty<IReadOnlyList<TextLauf>>()));
         return bogen;
+    }
+
+    /// <summary>Bewertungsbogen ohne Punkte; null, wenn keine Zeile eine Anmerkung hat.</summary>
+    IReadOnlyList<BogenZeile>? Anmerkungsbogen()
+    {
+        var bogen = new List<BogenZeile>();
+        // Offene Überschriften (Ebene aufsteigend); ausgegeben erst, wenn darunter eine Anmerkung folgt.
+        var kette = new List<(int Ebene, BogenZeile Zeile, bool Ausgegeben)>();
+        var zuschlaege = new List<BogenZeile>();
+
+        foreach (RohpunktZeile z in Rohpunktzeilen)
+        {
+            switch (z.Art)
+            {
+                case Zeilenart.Aufgabe:
+                case Zeilenart.Ueberschrift:
+                    int ebene = z.Art == Zeilenart.Aufgabe ? 0 : Math.Max(1, z.Stufe);
+                    kette.RemoveAll(k => k.Ebene >= ebene);
+                    kette.Add((ebene, new BogenZeile(z.Art == Zeilenart.Aufgabe ? BogenArt.Aufgabe : BogenArt.Ueberschrift,
+                        z.Titel, z.Art == Zeilenart.Aufgabe ? 0 : z.Stufe, string.Empty, Array.Empty<IReadOnlyList<TextLauf>>()), false));
+                    break;
+                case Zeilenart.Position when z.HatKommentar:
+                    for (int i = 0; i < kette.Count; i++)
+                    {
+                        if (kette[i].Ebene >= Math.Max(1, z.Stufe) || kette[i].Ausgegeben) continue;
+                        bogen.Add(kette[i].Zeile);
+                        kette[i] = kette[i] with { Ausgegeben = true };
+                    }
+                    bogen.Add(new BogenZeile(BogenArt.Position, z.Titel, z.Stufe, string.Empty, BogenKommentar(z)));
+                    break;
+                case Zeilenart.Bonus when z.HatKommentar:
+                    zuschlaege.Add(new BogenZeile(BogenArt.Zuschlag, "Weitere Stärken", 1, string.Empty, BogenKommentar(z)));
+                    break;
+                case Zeilenart.Minus when z.HatKommentar:
+                    zuschlaege.Add(new BogenZeile(BogenArt.Zuschlag, "Weitere Schwächen", 1, string.Empty, BogenKommentar(z)));
+                    break;
+            }
+        }
+        bogen.AddRange(zuschlaege);
+        return bogen.Count > 0 ? bogen : null;
     }
 
     /// <summary>Zusatzspalten der Notenliste: Rohpunkte, Bonus, Minus, Gesamt und je Aufgabe die Summe.</summary>

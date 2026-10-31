@@ -407,7 +407,7 @@ public sealed partial class MainViewModel : ObservableObject
             string teilpunkteText = HatSchema ? string.Empty : TeilpunkteText();
             _gutachten.Erzeugen(vorlage, ziel, TextNormalizer.FormatierteAbsaetze(format), Platzhalter(punkte, teilpunkteText),
                 !HatSchema && _konfiguration.TeilpunkteAusgeben ? teilpunkteText : null,
-                Bewertungsbogen());
+                Bewertungsbogen(), _konfiguration.BogenPunkteAusgeben);
 
             GutachtenEntwurf stand = ZustandErfassen();
             try

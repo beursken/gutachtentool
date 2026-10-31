@@ -31,6 +31,12 @@ public sealed class Klausurkonfiguration
     /// <summary>Teilpunkte im Gutachten ausgeben (Platzhalter ###TEILPUNKTE### oder Absatz nach dem Freitext).</summary>
     public bool TeilpunkteAusgeben { get; set; }
 
+    /// <summary>
+    /// Bewertungsbogen (Rohpunkteschema) mit Punkten je Gliederungspunkt, Zwischen- und Gesamtsumme.
+    /// false = nur die Anmerkungen zu den Gliederungspunkten, ohne Punkte. Fehlt der Wert in Klausur.json: true.
+    /// </summary>
+    public bool BogenPunkteAusgeben { get; set; } = true;
+
     public List<Aufgabe> Aufgaben { get; set; } = new();
 
     /// <summary>Optional: Mindest-Rohpunkte für 1, 2, … 18 Punkte (18 aufsteigende Werte). Leer = linear.</summary>
