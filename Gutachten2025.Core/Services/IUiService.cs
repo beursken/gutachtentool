@@ -41,6 +41,9 @@ public interface IUiService
 
     /// <summary>Wechselt zum Reiter „Rohpunkte“.</summary>
     void RohpunkteZeigen();
+
+    /// <summary>Wandelt ein Gutachten in PDF um (Windows: Word; Mac: LibreOffice, falls vorhanden); false = nicht möglich.</summary>
+    Task<bool> AlsPdfSpeichernAsync(string docx, string pdf);
 }
 
 /// <summary>Zugriff auf den Gutachtenentwurf im RichEditBox; implementiert von der View.</summary>

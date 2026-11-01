@@ -9,4 +9,9 @@ public static class Darstellung
     public static Windows.UI.Text.FontWeight Gewicht(bool fett) => fett ? FontWeights.SemiBold : FontWeights.Normal;
 
     public static Thickness Links(double einzug) => new(einzug, 0, 0, 0);
+
+    /// <summary>Sichtbar, wenn der Wert falsch ist.</summary>
+    public static Visibility Nicht(bool wert) => wert ? Visibility.Collapsed : Visibility.Visible;
+
+    public static bool Umgekehrt(bool wert) => !wert;
 }

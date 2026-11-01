@@ -46,6 +46,8 @@
                             <button @onclick="() => Los(_vm.NotenlisteOeffnenCommand)">Notenliste @Oeffnen</button>
                             <button @onclick="() => Los(_vm.ErwartungshorizontOeffnenCommand)">Erwartungshorizont @Oeffnen</button>
                             <button @onclick="() => Los(_vm.TeilnehmendeImportierenCommand)">Teilnehmendenliste @Laden …</button>
+                            <button @onclick="() => Los(_vm.KennziffernEingebenCommand)" title="Bereich (z. B. 1001-1060) oder Liste; nicht vergebene entfernen">Kennziffern eingeben …</button>
+                            <button @onclick="() => Los(_vm.KlausurenportalExportierenCommand)" title="Notenliste und vorhandene Gutachten-PDFs als ZIP für das Prüfungsportal">Export für das Prüfungsportal (ZIP)</button>
                             <hr />
                             <button @onclick="() => Los(_vm.VorlageBearbeitenCommand)">Word-Vorlage @Oeffnen</button>
                             <button @onclick="() => Los(_vm.VorlageImportierenCommand)">Word-Vorlage @Laden …</button>
@@ -55,6 +57,7 @@
                             <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema @Laden …</button>
                             <hr />
                             <button @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)" title="Im KI-Portal aus Sachverhalt und Lösung ein Paket erzeugen">Klausurinformationen vorbereiten (KI-Portal)</button>
+                            <button @onclick="() => Los(_vm.BausteinstatistikSendenCommand)" title="Nur Bausteine und Zahl der Gutachten – keine Kennziffern oder Texte">Bausteinstatistik an das KI-Portal senden …</button>
                             <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
                             <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
                         </div>
@@ -98,8 +101,61 @@
 
     <div class="arbeitsflaeche @(_vm?.SeitenleisteOffen == true ? "mit-uebersicht" : "")">
         @* ---------- Textbausteine ---------- *@
-        <aside class="bausteine">
+        <aside class="bausteine @(_vm?.ZeigtUnterlagen == true ? "breit" : "")">
             @if (_vm is not null)
+            {
+                <div class="leistenwahl" role="tablist" aria-label="Inhalt der linken Leiste">
+                    @foreach ((Leistenanzeige art, string text) in Leisten)
+                    {
+                        <button role="tab" aria-selected="@(_vm.Leiste == art ? "true" : "false")" class="@(_vm.Leiste == art ? "aktiv" : "")"
+                                @onclick="() => _vm.Leiste = art">@text</button>
+                    }
+                </div>
+            }
+            @if (_vm is not null && _vm.ZeigtUnterlagen)
+            {
+                <div class="leiste klein">
+                    @if (_vm.UnterlageInBearbeitung)
+                    {
+                        <button class="knopf haupt" @onclick="() => Los(_vm.UnterlageFertigCommand)">Fertig</button>
+                        <button class="knopf leise" @onclick="() => Los(_vm.UnterlageVerwerfenCommand)">Verwerfen</button>
+                    }
+                    else
+                    {
+                        @if (_vm.UnterlageAnzeigen)
+                        {
+                            <button class="knopf leise" @onclick="MarkierungAlsBausteinAsync" title="Markierten Text als Baustein speichern">+ Baustein</button>
+                        }
+                        <button class="knopf leise" @onclick="() => Los(_vm.UnterlageBearbeitenCommand)" disabled="@(!_vm.KannUnterlageBearbeiten)"
+                                title="@(_vm.KannUnterlageBearbeiten ? "Text als Markdown bearbeiten" : "Sachverhalt oder Lösung einzeln wählen")">Bearbeiten</button>
+                        <button class="knopf leise" @onclick="() => Los(_vm.UnterlageImportierenCommand)" disabled="@_vm.KeineKlausur"
+                                title="Aus Datei übernehmen (.md, .txt, .docx)">Datei @Laden …</button>
+                    }
+                </div>
+                @if (_vm.UnterlageInBearbeitung)
+                {
+                    <textarea class="unterlagentext" spellcheck="true" lang="de" value="@_vm.UnterlagenEntwurf"
+                              @oninput="e => _vm.UnterlagenEntwurf = e.Value as string ?? string.Empty"></textarea>
+                    <p class="tipp">Markdown: # Überschrift · **fett** · *kursiv* · - Aufzählung · Leerzeile = neuer Absatz</p>
+                }
+                else if (_vm.UnterlageLeerSichtbar)
+                {
+                    <p class="leer">@_vm.UnterlageLeerHinweis
+                        (<button class="verweis" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)">Klausurinformationen vorbereiten</button>)</p>
+                }
+                else
+                {
+                    <div class="leiste">
+                        <input type="search" placeholder="Im Text suchen (Eingabe: nächster Treffer)" value="@_unterlagenSuche"
+                               @oninput="UnterlagenSuchenAsync" @onkeydown="UnterlagenSucheTasteAsync" />
+                        <span class="klein">@_unterlagenTreffer</span>
+                    </div>
+                    @* Sicher: MarkdownHtml übernimmt kein HTML aus dem Text und lässt nur http/https/mailto-Verweise zu. *@
+                    <div class="unterlage @(_vm.HatSchema ? "sprungziele" : "")" lang="de"
+                         title="@(_vm.HatSchema ? "Klick auf eine Überschrift: zur passenden Zeile im Reiter „Rohpunkte“" : null)">@((MarkupString)_vm.UnterlagenHtml)</div>
+                }
+            }
+            else if (_vm is not null)
             {
                 <div class="leiste">
                     <input id="f-suche" type="search" placeholder="Bausteine durchsuchen" value="@_vm.Suchtext"
@@ -173,6 +229,17 @@
                         <button class="knopf" @onclick="_vm.NeueArbeit" title="Eingaben für die nächste Arbeit leeren">Nächste Arbeit</button>
                         <button class="knopf haupt" @onclick="() => Los(_vm.GenerierenCommand)" disabled="@_vm.KeineKlausur">Gutachten erstellen</button>
                     </div>
+                    @if (_vm.ErstnoteSichtbar)
+                    {
+                        <div class="hinweiszeile erstnote @(_vm.ErstnoteAbweichend ? "abweichend" : "")"
+                             title="Erstnoten aus dem Paket; Warnung ab 4 Punkten Abweichung">@(_vm.ErstnoteAbweichend ? "⚠ " : "")@_vm.ErstnoteText
+                            @if (_vm.HatErstnote)
+                            {
+                                <button class="verweis" @onclick="() => Los(_vm.ErstgutachtenZustimmenCommand)"
+                                        title="Erstnote übernehmen und „@MainViewModel.Zustimmungssatz“ einfügen">Einverstanden</button>
+                            }
+                        </div>
+                    }
                     @if (_vm.InBearbeitung)
                     {
                         <div class="hinweiszeile">@_vm.BearbeitungsHinweis</div>
@@ -332,6 +399,8 @@
             await Nachlauf();
             _seitenRef = DotNetObjectReference.Create(this);
             await Js.InvokeVoidAsync("gutachtentool.beimVerlassen", _seitenRef);
+            await Js.InvokeVoidAsync("gutachtentool.verweiseAbfangen", _seitenRef);
+            await Js.InvokeVoidAsync("gutachtentool.unterlage.anmelden", _seitenRef);
             _takt = new Timer(_ => _ = InvokeAsync(TaktAsync), null, 3000, 3000);
             // Mac: per Doppelklick geöffnete Pakete (auch das, mit dem das Programm gestartet wurde)
             Plattform.DateienAbonnieren(pfad => InvokeAsync(async () =>
@@ -358,6 +427,72 @@
         await Plattform.NachlaufAsync();
         StateHasChanged();
     }
+
+    /// <summary>Verweise in Sachverhalt/Lösung (Mac: Standardbrowser; Browser: neuer Tab).</summary>
+    [JSInvokable]
+    public async Task VerweisOeffnen(string adresse)
+    {
+        if (!Uri.TryCreate(adresse, UriKind.Absolute, out Uri? u) || u.Scheme is not ("https" or "http" or "mailto")) return;
+        try
+        {
+            await Plattform.OeffnenAsync(u.ToString());
+        }
+        catch (Exception ex)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
+    }
+
+    // ---------- Seitenleiste: Suche, Baustein aus Markierung, Sprung zur Rohpunktzeile ----------
+
+    string _unterlagenSuche = string.Empty, _unterlagenTreffer = string.Empty;
+
+    async Task UnterlagenSuchenAsync(ChangeEventArgs e)
+    {
+        _unterlagenSuche = e.Value as string ?? string.Empty;
+        _unterlagenTreffer = await Js.InvokeAsync<string>("gutachtentool.unterlage.suchen", _unterlagenSuche, 0);
+    }
+
+    async Task UnterlagenSucheTasteAsync(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter") return;
+        _unterlagenTreffer = await Js.InvokeAsync<string>("gutachtentool.unterlage.suchen", _unterlagenSuche, e.ShiftKey ? -1 : 1);
+    }
+
+    async Task MarkierungAlsBausteinAsync()
+    {
+        if (_vm is null) return;
+        string text = await Js.InvokeAsync<string>("gutachtentool.unterlage.auswahl");
+        if (text.Length == 0)
+        {
+            Ui.Melden(Meldungsart.Information, "Nichts markiert", "Bitte zuerst Text in Sachverhalt oder Lösung markieren.");
+            return;
+        }
+        await _vm.NeuerBausteinAsync(text, null);
+        await Nachlauf();
+    }
+
+    [JSInvokable]
+    public async Task UeberschriftGewaehlt(string ueberschrift)
+    {
+        if (_vm is null || !_vm.HatSchema) return;
+        int index = _vm.RohpunktzeileZuUeberschrift(ueberschrift);
+        if (index < 0)
+        {
+            Ui.Melden(Meldungsart.Information, "Keine passende Rohpunktzeile", $"Zu „{ueberschrift}“ gibt es im Rohpunkteschema keine ähnliche Überschrift.");
+            return;
+        }
+        _reiter = 1;
+        StateHasChanged();
+        await Task.Yield();
+        await Js.InvokeVoidAsync("gutachtentool.rohpunktZeigen", RohpunkteReiter.ZeilenId(index));
+    }
+
+    static readonly (Leistenanzeige Art, string Text)[] Leisten =
+    {
+        (Leistenanzeige.Bausteine, "Bausteine"), (Leistenanzeige.Sachverhalt, "Sachverhalt"),
+        (Leistenanzeige.Loesung, "Lösung"), (Leistenanzeige.Beides, "Beides"),
+    };
 
     [JSInvokable]
     public async Task JetztSichern()

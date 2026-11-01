@@ -56,7 +56,11 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         FensterWiederherstellen();
         _bereit = true;
 
-        _autosave.Tick += (_, _) => ViewModel.Autosave();
+        _autosave.Tick += (_, _) =>
+        {
+            ViewModel.Autosave();
+            StatusAktualisieren(); // laufende Bearbeitungszeit
+        };
         _autosave.Start();
         _meldungSchliessen.Tick += (_, _) => { _meldungSchliessen.Stop(); Toast.Visibility = Visibility.Collapsed; };
     }
@@ -69,6 +73,8 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         _geladen = true;
         AnimationenEinrichten();
         DarstellungAnwenden();
+        UnterlagenZeichnen();
+        WoerterbuchAktualisieren();
         ZoomAnwenden();
         WoerterZaehlen();
         StatusAktualisieren();
@@ -151,6 +157,8 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
     {
         _autosave.Stop();
         _meldungSchliessen.Stop();
+        Woerterbuch.Entfernen();
+        WordBeenden();
         FensterMerken();
         ViewModel.Autosave(erzwingen: true);
     }
@@ -168,7 +176,18 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
             case nameof(MainViewModel.Satzvorschlaege) when !ViewModel.Satzvorschlaege:
                 VorschlagVerbergen();
                 break;
-            case nameof(MainViewModel.BausteineOffen) or nameof(MainViewModel.BausteineOben) or nameof(MainViewModel.SeitenleisteOffen):
+            case nameof(MainViewModel.UnterlagenHtml):
+                if (_geladen) UnterlagenZeichnen();
+                break;
+            case nameof(MainViewModel.HatSchema):
+                _unterlagenGezeichnet = null; // Überschriften werden erst mit Schema zu Sprungzielen
+                if (_geladen) UnterlagenZeichnen();
+                break;
+            case nameof(MainViewModel.UnterlagenWoerter):
+                if (_geladen) WoerterbuchAktualisieren();
+                break;
+            case nameof(MainViewModel.BausteineOffen) or nameof(MainViewModel.BausteineOben) or nameof(MainViewModel.SeitenleisteOffen)
+                or nameof(MainViewModel.Leiste):
                 if (e.PropertyName == nameof(MainViewModel.SeitenleisteOffen)) _uebersichtAutomatischZu = false;
                 if (e.PropertyName == nameof(MainViewModel.BausteineOffen)) _bausteineAutomatischZu = false;
                 if (_geladen) LayoutAnwenden();
@@ -392,7 +411,9 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         if (Notenskala.IstGueltig(ViewModel.NotenIndex)) teile.Add(Notenskala.MitPunkten(ViewModel.NotenIndex));
         if (ViewModel.RohpunkteKurz is { } roh) teile.Add(roh);
         if (ViewModel.InBearbeitung) teile.Add("Änderung eines bestehenden Gutachtens");
-        StatusText.Text = string.Join(" · ", teile);
+        if (ViewModel.LaufendeZeit is { Length: > 0 } zeit) teile.Add(zeit);
+        string status = string.Join(" · ", teile);
+        if (StatusText.Text != status) StatusText.Text = status;
     }
 
     void EditorRueckgaengig_Click(object sender, RoutedEventArgs e)
@@ -578,7 +599,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
     Control SucheSichtbar()
     {
         if (_fokusmodus) FokusSetzen(false);
-        ViewModel.BausteineOffen = true;
+        if (!ViewModel.BausteineSichtbar) ViewModel.BausteineUmschalten();
         return Suche;
     }
 

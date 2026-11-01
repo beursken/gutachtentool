@@ -137,7 +137,7 @@ public sealed class WebPlattform : IPlattform, IBrowserSicherung
 
     public async Task OeffnenAsync(string pfad)
     {
-        if (pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (IstVerweis(pfad))
         {
             await _js.InvokeVoidAsync("open", pfad, "_blank", "noopener");
             return;
@@ -227,4 +227,12 @@ public sealed class WebPlattform : IPlattform, IBrowserSicherung
             return null;
         }
     }
+
+    /// <summary>Im Browser gibt es keine Umwandlung nach PDF.</summary>
+    public Task<bool> AlsPdfSpeichernAsync(string docx, string pdf) => Task.FromResult(false);
+
+    static bool IstVerweis(string pfad) =>
+        pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        || pfad.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        || pfad.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
 }

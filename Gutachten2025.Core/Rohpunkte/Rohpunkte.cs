@@ -53,9 +53,13 @@ public sealed partial class RohpunktZeile : ObservableObject
     [ObservableProperty]
     public partial string Zwischensumme { get; set; }
 
+    /// <summary>Eingabe über dem Höchstwert (wird anschließend auf den Höchstwert begrenzt).</summary>
+    public event EventHandler<double>? MaximumUeberschritten;
+
     partial void OnPunkteChanged(double value)
     {
         if (double.IsNaN(value)) return;
+        if (value > Max + 1e-9) MaximumUeberschritten?.Invoke(this, value);
         double gerundet = Math.Clamp(Math.Round(value * 4, MidpointRounding.AwayFromZero) / 4, 0, Max);
         if (gerundet != value) Punkte = gerundet;
     }

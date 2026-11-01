@@ -276,6 +276,11 @@ public sealed partial class MainWindow
             Content = "Rohpunkteschema: Punkte im Bewertungsbogen ausgeben (sonst nur die Anmerkungen, ohne Punkte und Summen)",
             IsChecked = vorgabe.BogenPunkteAusgeben,
         };
+        var gliederungFett = new CheckBox
+        {
+            Content = "„Frage 1“, „Aufgabe 2“, „Tatkomplex 3“, „Fallfrage 4“ im Gutachten fett setzen",
+            IsChecked = vorgabe.GliederungFett,
+        };
         TextBox Mehrzeilig(string kopf, string inhalt, double hoehe, string platzhalter) => new()
         {
             Header = kopf,
@@ -306,6 +311,7 @@ public sealed partial class MainWindow
             "Teilpunkte erscheinen im Gutachten am Platzhalter ###TEILPUNKTE### der Word-Vorlage, sonst als Absatz nach dem Gutachtentext; ###ROHPUNKTE### liefert die Summe. Mit Rohpunkteschema entfallen die Teilpunkte; der Bewertungsbogen erscheint am Platzhalter ###BEWERTUNGSBOGEN### oder am Ende."));
         panel.Children.Add(ausgeben);
         panel.Children.Add(bogenPunkte);
+        panel.Children.Add(gliederungFett);
         panel.Children.Add(aufgaben);
         panel.Children.Add(schluessel);
         panel.Children.Add(kriterien);
@@ -333,6 +339,7 @@ public sealed partial class MainWindow
                 {
                     TeilpunkteAusgeben = ausgeben.IsChecked == true,
                     BogenPunkteAusgeben = bogenPunkte.IsChecked == true,
+                    GliederungFett = gliederungFett.IsChecked == true,
                     Aufgaben = KlausurKonfigDatei.AufgabenLesen(aufgaben.Text),
                     Notenschluessel = KlausurKonfigDatei.SchluesselLesen(schluessel.Text),
                     Formalkriterien = KlausurKonfigDatei.KriterienLesen(kriterien.Text),

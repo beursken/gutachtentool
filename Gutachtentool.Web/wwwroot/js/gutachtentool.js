@@ -156,7 +156,9 @@ window.gutachtentool = (() => {
             el.dataset.angemeldet = '1';
             try { document.execCommand('styleWithCSS', false, false); } catch (e) { /* ältere Browser */ }
             document.addEventListener('selectionchange', () => cursorMerken(el));
-            el.addEventListener('input', () => melden(id));
+            el.addEventListener('input', () => { melden(id); kuerzelHinweis(el); });
+            el.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) kuerzelHinweis(el); });
+            el.addEventListener('blur', () => hinweisVerbergen());
             el.addEventListener('paste', e => {
                 // Nur reiner Text: keine Formatierung aus Word oder Webseiten übernehmen.
                 e.preventDefault();
@@ -174,7 +176,9 @@ window.gutachtentool = (() => {
                     document.execCommand(e.key === 'b' ? 'bold' : 'italic');
                     return;
                 }
+                if (e.key === 'Escape') { hinweisVerbergen(); return; }
                 if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    hinweisVerbergen();
                     const m = kuerzelVorCursor.exec(textVorCursor(el, 30));
                     const text = m ? kuerzel[m[1].toLowerCase()] : undefined;
                     if (!text) return;
@@ -212,6 +216,98 @@ window.gutachtentool = (() => {
         },
     };
 
+    // Graue Vorschau, wenn vor der Schreibmarke ein Kürzel steht (Tab fügt den Baustein ein).
+    let hinweis = null;
+    function hinweisVerbergen() { if (hinweis) hinweis.hidden = true; }
+    function kuerzelHinweis(el) {
+        const s = document.getSelection();
+        const m = s && s.isCollapsed ? kuerzelVorCursor.exec(textVorCursor(el, 30)) : null;
+        const text = m ? kuerzel[m[1].toLowerCase()] : undefined;
+        if (!text) { hinweisVerbergen(); return; }
+        if (!hinweis) {
+            hinweis = document.createElement('div');
+            hinweis.className = 'kuerzelvorschau';
+            document.body.appendChild(hinweis);
+        }
+        hinweis.textContent = '→ ' + (text.length > 160 ? text.substring(0, 159) + '…' : text) + '   Tab';
+        const r = s.getRangeAt(0).getBoundingClientRect();
+        const rand = el.getBoundingClientRect();
+        hinweis.style.left = Math.max(rand.left + 8, Math.min(r.left, rand.right - 320)) + 'px';
+        hinweis.style.top = (r.bottom + 4 || rand.top + 24) + 'px';
+        hinweis.style.maxWidth = Math.max(240, rand.right - rand.left - 32) + 'px';
+        hinweis.hidden = false;
+    }
+
+    // ---------- Seitenleiste Sachverhalt/Lösung ----------
+    const unterlage = {
+        /** Fundstellen mit <mark> hervorheben; richtung 0 = neu suchen, ±1 = weiter. Rückgabe „i/n“ oder ''. */
+        suchen(begriff, richtung) {
+            const wurzel = document.querySelector('.unterlage');
+            if (!wurzel) return '';
+            if (richtung === 0) {
+                for (const m of wurzel.querySelectorAll('mark.fund')) m.replaceWith(document.createTextNode(m.textContent));
+                wurzel.normalize();
+                const b = (begriff || '').trim();
+                if (b.length < 2) return '';
+                const muster = new RegExp(b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                const gang = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT);
+                const knoten = [];
+                while (gang.nextNode()) knoten.push(gang.currentNode);
+                for (const t of knoten) {
+                    const text = t.nodeValue;
+                    muster.lastIndex = 0;
+                    if (!muster.test(text)) continue;
+                    muster.lastIndex = 0;
+                    const teil = document.createDocumentFragment();
+                    let pos = 0, m;
+                    while ((m = muster.exec(text)) !== null) {
+                        teil.appendChild(document.createTextNode(text.substring(pos, m.index)));
+                        const mark = document.createElement('mark');
+                        mark.className = 'fund';
+                        mark.textContent = m[0];
+                        teil.appendChild(mark);
+                        pos = m.index + m[0].length;
+                    }
+                    teil.appendChild(document.createTextNode(text.substring(pos)));
+                    t.replaceWith(teil);
+                }
+                wurzel.dataset.fund = '-1';
+            }
+            const funde = wurzel.querySelectorAll('mark.fund');
+            if (!funde.length) return (begriff || '').trim().length >= 2 ? 'keine Treffer' : '';
+            let i = parseInt(wurzel.dataset.fund || '-1', 10);
+            i = ((i + (richtung === 0 ? 1 : richtung)) % funde.length + funde.length) % funde.length;
+            wurzel.dataset.fund = String(i);
+            funde.forEach((f, k) => f.classList.toggle('aktuell', k === i));
+            funde[i].scrollIntoView({ block: 'center' });
+            return (i + 1) + '/' + funde.length;
+        },
+        /** Markierter Text innerhalb der Seitenleiste. */
+        auswahl() {
+            const s = document.getSelection();
+            const wurzel = document.querySelector('.unterlage');
+            if (!s || !s.rangeCount || !wurzel || !wurzel.contains(s.anchorNode)) return '';
+            return s.toString().trim();
+        },
+        /** Klick auf eine Überschrift → .NET (Sprung zur Rohpunktzeile). */
+        anmelden(ref) {
+            document.addEventListener('click', e => {
+                const h = e.target instanceof Element ? e.target.closest('.unterlage h1, .unterlage h2, .unterlage h3, .unterlage h4, .unterlage h5, .unterlage h6') : null;
+                if (!h || (document.getSelection() && !document.getSelection().isCollapsed)) return;
+                ref.invokeMethodAsync('UeberschriftGewaehlt', h.textContent.replace(/\s+/g, ' ').trim());
+            });
+        },
+    };
+
+    /** Zeile im Reiter „Rohpunkte“ sichtbar machen und ihr Punktefeld fokussieren. */
+    function rohpunktZeigen(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.scrollIntoView({ block: 'center' });
+        const feld = el.matches('input') ? el : el.querySelector('input[type=number]');
+        if (feld) { feld.focus(); if (feld.select) feld.select(); }
+    }
+
     // ---------- Einfache Textfelder (Anmerkungen im Reiter „Rohpunkte“) ----------
     const feld = {
         einfuegen(id, text) {
@@ -241,5 +337,15 @@ window.gutachtentool = (() => {
 
     function neuLaden() { location.reload(); }
 
-    return { speicher, herunterladen, fokus, editor, feld, beimVerlassen, neuLaden };
+    /** Verweise in Sachverhalt/Lösung über .NET öffnen (Mac: Standardbrowser statt des Programmfensters). */
+    function verweiseAbfangen(ref) {
+        document.addEventListener('click', e => {
+            const a = e.target instanceof Element ? e.target.closest('.unterlage a[href]') : null;
+            if (!a) return;
+            e.preventDefault();
+            ref.invokeMethodAsync('VerweisOeffnen', a.getAttribute('href'));
+        });
+    }
+
+    return { speicher, herunterladen, fokus, editor, feld, beimVerlassen, neuLaden, verweiseAbfangen, unterlage, rohpunktZeigen };
 })();

@@ -89,6 +89,13 @@ public sealed class UebersichtEintrag
     public int? Punkte { get; init; }
     public bool HatEntwurf { get; init; }
     public bool SchemaGeaendert { get; init; }
+    /// <summary>Bearbeitungszeit, z. B. „12.11. 14:03–14:31 · 24 Min.“ (leer = unbekannt).</summary>
+    public string Zeit { get; init; } = string.Empty;
+    /// <summary>Erstnote (Zweitgutachten), z. B. „Erstgutachten 9“.</summary>
+    public string Erstnote { get; init; } = string.Empty;
+    public string Zusatz => string.Join(" · ", new[] { Erstnote, Zeit }.Where(s => s.Length > 0));
+    public bool HatZusatz => Zusatz.Length > 0;
+    public bool IstOffen => Punkte is null;
     public string Anzeige => Name.Length > 0 && Name != Kennung ? $"{Kennung} – {Name}" : Kennung;
     public string Status => Punkte is int p ? $"{p} P.{(SchemaGeaendert ? " ⚠" : string.Empty)}" : "offen";
     public string Hinweis => Punkte is int p

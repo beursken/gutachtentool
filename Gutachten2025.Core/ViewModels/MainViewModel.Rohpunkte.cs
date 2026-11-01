@@ -124,6 +124,7 @@ public sealed partial class MainViewModel
         {
             z.PropertyChanged -= Rohpunkt_PropertyChanged;
             z.KommentarGeaendert -= Rohpunkt_KommentarGeaendert;
+            z.MaximumUeberschritten -= Rohpunkt_MaximumUeberschritten;
         }
         Rohpunktzeilen.Clear();
         if (_schema is not null)
@@ -131,6 +132,7 @@ public sealed partial class MainViewModel
             {
                 z.PropertyChanged += Rohpunkt_PropertyChanged;
                 z.KommentarGeaendert += Rohpunkt_KommentarGeaendert;
+                z.MaximumUeberschritten += Rohpunkt_MaximumUeberschritten;
                 Rohpunktzeilen.Add(z);
             }
         HatSchema = _schema is not null;
@@ -156,13 +158,31 @@ public sealed partial class MainViewModel
 
     void Rohpunkt_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(RohpunktZeile.Punkte)) RohpunkteAktualisieren();
+        if (e.PropertyName != nameof(RohpunktZeile.Punkte)) return;
+        RohpunkteAktualisieren();
+        if (!_rohpunkteWerdenGeladen) Aktivitaet();
     }
 
     void Rohpunkt_KommentarGeaendert(object? sender, EventArgs e)
     {
-        if (_initialisiert && !_rohpunkteWerdenGeladen) _einstellungenGeaendert = true;
+        if (_initialisiert && !_rohpunkteWerdenGeladen)
+        {
+            _einstellungenGeaendert = true;
+            Aktivitaet();
+        }
     }
+
+    /// <summary>Schnellerfassung: zu hohe Eingabe nicht still kappen, sondern melden.</summary>
+    void Rohpunkt_MaximumUeberschritten(object? sender, double eingabe)
+    {
+        if (sender is not RohpunktZeile z || _rohpunkteWerdenGeladen) return;
+        _ui.Melden(Meldungsart.Warnung, "Höchstpunktzahl überschritten",
+            $"„{Kurz(z.Titel, 60)}“: eingegeben {Zahl.Text(eingabe)}, höchstens {Zahl.Text(z.Max)} – auf {Zahl.Text(z.Max)} gesetzt.");
+    }
+
+    /// <summary>Zeile des Rohpunkteschemas zu einer Überschrift der Lösung (Sprung aus der Seitenleiste); -1 = keine.</summary>
+    public int RohpunktzeileZuUeberschrift(string ueberschrift) =>
+        Gliederungsabgleich.Finden(ueberschrift, Rohpunktzeilen.Select(z => z.Titel).ToList());
 
     void RohpunkteAktualisieren()
     {

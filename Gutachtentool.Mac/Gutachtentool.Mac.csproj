@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Gutachtentool.Mac</RootNamespace>
     <AssemblyName>Gutachtentool</AssemblyName>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Product>Gutachtentool</Product>
     <Company>Universität Passau</Company>
     <RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>

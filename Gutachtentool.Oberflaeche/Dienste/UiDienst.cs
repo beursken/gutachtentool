@@ -48,6 +48,7 @@ public sealed class KonfigurationDialog : Dialog
 {
     public bool TeilpunkteAusgeben { get; set; }
     public bool BogenPunkteAusgeben { get; set; }
+    public bool GliederungFett { get; set; } = true;
     public string Aufgaben { get; set; } = string.Empty;
     public string Schluessel { get; set; } = string.Empty;
     public string Kriterien { get; set; } = string.Empty;
@@ -214,6 +215,7 @@ public sealed class UiDienst : IUiService
             Titel = $"Klausureinstellungen: {klausur}",
             TeilpunkteAusgeben = vorgabe.TeilpunkteAusgeben,
             BogenPunkteAusgeben = vorgabe.BogenPunkteAusgeben,
+            GliederungFett = vorgabe.GliederungFett,
             Aufgaben = KlausurKonfigDatei.AufgabenText(vorgabe),
             Schluessel = KlausurKonfigDatei.SchluesselText(vorgabe),
             Kriterien = KlausurKonfigDatei.KriterienText(vorgabe),
@@ -230,6 +232,7 @@ public sealed class UiDienst : IUiService
             {
                 TeilpunkteAusgeben = d.TeilpunkteAusgeben,
                 BogenPunkteAusgeben = d.BogenPunkteAusgeben,
+                GliederungFett = d.GliederungFett,
                 Aufgaben = KlausurKonfigDatei.AufgabenLesen(d.Aufgaben),
                 Notenschluessel = KlausurKonfigDatei.SchluesselLesen(d.Schluessel),
                 Formalkriterien = KlausurKonfigDatei.KriterienLesen(d.Kriterien),
@@ -316,6 +319,8 @@ public sealed class UiDienst : IUiService
 
     /// <summary>Drucken über Word gibt es nur unter Windows (die Schaltfläche fehlt hier).</summary>
     public bool Drucken(string pfad) => false;
+
+    public Task<bool> AlsPdfSpeichernAsync(string docx, string pdf) => _plattform.AlsPdfSpeichernAsync(docx, pdf);
 
     public void Fokussieren(Eingabefeld feld)
     {

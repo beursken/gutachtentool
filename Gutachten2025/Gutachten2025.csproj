@@ -5,7 +5,7 @@
   <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
   <RootNamespace>Gutachten2025</RootNamespace>
   <!-- Versionsnummer für das Installationsprogramm (Installer\Erstellen.ps1 liest sie aus der EXE). -->
-  <Version>1.3.0</Version>
+  <Version>1.4.0</Version>
   <Product>Gutachtentool</Product>
   <Company>Universität Passau</Company>
   <ApplicationManifest>app.manifest</ApplicationManifest>

@@ -78,6 +78,14 @@
                             <MenuFlyoutItem Text="Teilnehmendenliste importieren…" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE716;"/></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Kennziffern eingeben…" Command="{x:Bind ViewModel.KennziffernEingebenCommand}"
+                                            ToolTipService.ToolTip="Bereich (z. B. 1001-1060) oder Liste; nicht vergebene Kennziffern entfernen">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8EF;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Export für das Prüfungsportal (ZIP)…" Command="{x:Bind ViewModel.KlausurenportalExportierenCommand}"
+                                            ToolTipService.ToolTip="Notenliste und Gutachten als PDF für „Noten/Gutachten hochladen“ im Prüfungsportal">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xEDE1;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
                             <MenuFlyoutSeparator/>
                             <MenuFlyoutItem Text="Rohpunkteschema in Excel bearbeiten" Command="{x:Bind ViewModel.RohpunkteInExcelBearbeitenCommand}"
                                             ToolTipService.ToolTip="rohpunkte.xlsx im Layout des KI-Portals; wird nach dem Speichern übernommen">
@@ -95,6 +103,10 @@
                             <MenuFlyoutItem Text="Klausurinformationen vorbereiten (KI-Portal)" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"
                                             ToolTipService.ToolTip="Im KI-Portal aus Sachverhalt und Lösung ein Paket erzeugen: Vorlage, Textbausteine, Rohpunkteschema, Erwartungshorizont">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE774;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Bausteinstatistik an das KI-Portal senden…" Command="{x:Bind ViewModel.BausteinstatistikSendenCommand}"
+                                            ToolTipService.ToolTip="Nur Bausteine und Zahl der Gutachten, in denen sie vorkommen – keine Kennziffern oder Texte">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE9D9;"/></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
                             <MenuFlyoutItem Text="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8B5;"/></MenuFlyoutItem.Icon>
@@ -154,7 +166,26 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="Bausteine" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center"/>
+                                <DropDownButton Padding="6,3" Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                                                ToolTipService.ToolTip="Inhalt der Seitenleiste: Bausteine, Sachverhalt oder Lösung (F7)">
+                                    <TextBlock Text="Bausteine" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <DropDownButton.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                            <MenuFlyoutItem Text="Bausteine" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Bausteine">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE90C;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Sachverhalt" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Sachverhalt">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Loesung">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE73E;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Sachverhalt und Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Beides">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                        </MenuFlyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
                                     <Button Padding="6,4" Command="{x:Bind ViewModel.NeueGruppeOhneBezugCommand}"
                                             ToolTipService.ToolTip="Neue Gruppe am Ende (Unterebenen: Rechtsklick auf eine Gruppe oder Ziehen)">
@@ -201,7 +232,14 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="5" Padding="5,0" CornerRadius="8" VerticalAlignment="Center"
+                                                        Background="{x:Bind local:MainWindow.NutzungFarbe(NutzungStufe), Mode=OneWay}"
+                                                        Visibility="{x:Bind HatNutzungstext, Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind NutzungText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"
+                                                               Foreground="{x:Bind local:MainWindow.NutzungSchrift(NutzungStufe), Mode=OneWay}"/>
+                                                </Border>
                                                 <TextBlock Text="{x:Bind NrText, Mode=OneWay}" MinWidth="22" Opacity="0.45"
                                                            Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Top" Margin="0,2,0,0"/>
                                                 <TextBlock Grid.Column="1" Text="{x:Bind Text, Mode=OneWay}" TextWrapping="WrapWholeWords"
@@ -256,6 +294,119 @@
                             </StackPanel>
                             <TextBlock Grid.Row="2" Margin="4,16" Text="Keine Treffer." Opacity="0.7" VerticalAlignment="Top"
                                        Visibility="{x:Bind ViewModel.KeineTreffer, Mode=OneWay}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- ===== Sachverhalt und Lösung (linke Leiste; auch wenn die Bausteine über dem Editor stehen) ===== -->
+                    <Border x:Name="UnterlagenBereich" Grid.Column="0" Padding="12,8,8,8" BorderThickness="0,1,1,0" Visibility="Collapsed"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            SizeChanged="UnterlagenBereich_SizeChanged">
+                        <Grid RowSpacing="6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="1" ColumnSpacing="6" Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="UnterlagenSuche" PlaceholderText="Im Text suchen (Eingabe: nächster Treffer)"
+                                         TextChanged="UnterlagenSuche_TextChanged" KeyDown="UnterlagenSuche_KeyDown"/>
+                                <TextBlock x:Name="UnterlagenTreffer" Grid.Column="1" VerticalAlignment="Center" Opacity="0.7"
+                                           Style="{StaticResource CaptionTextBlockStyle}"/>
+                            </Grid>
+                            <Grid ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <DropDownButton Padding="6,3" Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                                                ToolTipService.ToolTip="Inhalt der Seitenleiste wählen (F7 blendet ein/aus)">
+                                    <TextBlock Text="{x:Bind ViewModel.UnterlagenTitel, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <DropDownButton.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                            <MenuFlyoutItem Text="Bausteine" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Bausteine" Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.BausteineOben), Mode=OneWay}">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE90C;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Sachverhalt" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Sachverhalt">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Loesung">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE73E;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Sachverhalt und Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Beides">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                        </MenuFlyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageBearbeitenCommand}"
+                                            IsEnabled="{x:Bind ViewModel.KannUnterlageBearbeiten, Mode=OneWay}"
+                                            Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.UnterlageInBearbeitung), Mode=OneWay}"
+                                            ToolTipService.ToolTip="Text bearbeiten (Markdown)">
+                                        <FontIcon FontSize="16" Glyph="&#xE70F;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageFertigCommand}" Style="{StaticResource AccentButtonStyle}"
+                                            Visibility="{x:Bind ViewModel.UnterlageInBearbeitung, Mode=OneWay}"
+                                            ToolTipService.ToolTip="Änderungen übernehmen">
+                                        <FontIcon FontSize="16" Glyph="&#xE73E;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageVerwerfenCommand}"
+                                            Visibility="{x:Bind ViewModel.UnterlageInBearbeitung, Mode=OneWay}"
+                                            ToolTipService.ToolTip="Änderungen verwerfen">
+                                        <FontIcon FontSize="16" Glyph="&#xE711;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Click="UnterlagenAlsBaustein_Click"
+                                            Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}"
+                                            ToolTipService.ToolTip="Markierten Text als Baustein speichern (auch per Rechtsklick)">
+                                        <FontIcon FontSize="16" Glyph="&#xE710;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageImportierenCommand}"
+                                            IsEnabled="{x:Bind local:Darstellung.Umgekehrt(ViewModel.KeineKlausur), Mode=OneWay}"
+                                            ToolTipService.ToolTip="Aus Datei übernehmen (.md, .txt, .docx)">
+                                        <FontIcon FontSize="16" Glyph="&#xE8E5;"/>
+                                    </Button>
+                                    <Button Padding="6,4" Click="UnterlagenSchliessen_Click"
+                                            ToolTipService.ToolTip="Seitenleiste ausblenden (F7)">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A0;"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <ScrollViewer x:Name="UnterlagenScroller" Grid.Row="2" Padding="0,0,8,0"
+                                          HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto" ZoomMode="Enabled" MinZoomFactor="0.6" MaxZoomFactor="2.5"
+                                          Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}">
+                                <StackPanel x:Name="UnterlagenInhalt" Padding="2,0,0,16"/>
+                            </ScrollViewer>
+
+                            <Grid Grid.Row="2" RowSpacing="4" Visibility="{x:Bind ViewModel.UnterlageInBearbeitung, Mode=OneWay}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBox x:Name="UnterlagenEditor" AcceptsReturn="True" TextWrapping="Wrap" IsSpellCheckEnabled="True" Language="de-DE"
+                                         FontFamily="Cascadia Mono, Consolas" FontSize="13"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         Text="{x:Bind ViewModel.UnterlagenEntwurf, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.65" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Text="Markdown: # Überschrift · **fett** · *kursiv* · - Aufzählung · 1. Nummer · Leerzeile = neuer Absatz"/>
+                            </Grid>
+
+                            <StackPanel Grid.Row="2" Spacing="8" Margin="4,16" VerticalAlignment="Top"
+                                        Visibility="{x:Bind ViewModel.UnterlageLeerSichtbar, Mode=OneWay}">
+                                <TextBlock TextWrapping="Wrap" Opacity="0.75" Text="{x:Bind ViewModel.UnterlageLeerHinweis, Mode=OneWay}"/>
+                                <Button Content="Text eingeben…" Command="{x:Bind ViewModel.UnterlageBearbeitenCommand}"
+                                        IsEnabled="{x:Bind ViewModel.KannUnterlageBearbeiten, Mode=OneWay}"/>
+                                <Button Content="Aus Datei übernehmen…" Command="{x:Bind ViewModel.UnterlageImportierenCommand}"
+                                        IsEnabled="{x:Bind local:Darstellung.Umgekehrt(ViewModel.KeineKlausur), Mode=OneWay}"/>
+                                <Button Content="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
+                                <HyperlinkButton Content="Klausurinformationen im KI-Portal vorbereiten" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
 
@@ -320,6 +471,18 @@
                                                    Minimum="0" Maximum="80" SpinButtonPlacementMode="Compact"
                                                    Value="{x:Bind ViewModel.Seiten, Mode=TwoWay}"/>
                                     </controls:WrapPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.ErstnoteSichtbar, Mode=OneWay}"
+                                                ToolTipService.ToolTip="Erstnoten aus dem Paket (Erstnoten.json im Klausurordner); Warnung ab 4 Punkten Abweichung">
+                                        <FontIcon FontSize="14" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                  Visibility="{x:Bind ViewModel.ErstnoteAbweichend, Mode=OneWay}"/>
+                                        <FontIcon FontSize="14" Glyph="&#xE8F1;" Opacity="0.7"
+                                                  Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.ErstnoteAbweichend), Mode=OneWay}"/>
+                                        <TextBlock Text="{x:Bind ViewModel.ErstnoteText, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                        <HyperlinkButton Content="Einverstanden" Padding="4,0" Command="{x:Bind ViewModel.ErstgutachtenZustimmenCommand}"
+                                                         Visibility="{x:Bind ViewModel.HatErstnote, Mode=OneWay}"
+                                                         ToolTipService.ToolTip="Erstnote übernehmen und den Satz „Dem Erstgutachten schließe ich mich in Begründung und Ergebnis an.“ einfügen"/>
+                                    </StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.NoteAbweichend, Mode=OneWay}">
                                         <FontIcon FontSize="14" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
                                         <TextBlock Text="{x:Bind ViewModel.NotenHinweis, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center"
@@ -428,14 +591,19 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <ToggleButton x:Name="BausteineKnopf" Grid.Column="0" VerticalAlignment="Center" Padding="8,5"
-                                              IsChecked="{x:Bind ViewModel.BausteineOffen, Mode=TwoWay}"
-                                              ToolTipService.ToolTip="Seitenleiste „Bausteine“ links ein-/ausblenden (F6)">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontSize="16" Glyph="&#xE90C;"/>
-                                        <TextBlock Text="Bausteine"/>
-                                    </StackPanel>
-                                </ToggleButton>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                    <ToggleButton x:Name="BausteineKnopf" VerticalAlignment="Center" Padding="8,5" Click="BausteineKnopf_Click"
+                                                  ToolTipService.ToolTip="Bausteine ein-/ausblenden (F6)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon FontSize="16" Glyph="&#xE90C;"/>
+                                            <TextBlock Text="Bausteine"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="UnterlagenKnopf" VerticalAlignment="Center" Padding="8,5" Click="UnterlagenKnopf_Click"
+                                                  ToolTipService.ToolTip="Sachverhalt bzw. Lösung links ein-/ausblenden (F7; Auswahl über die Überschrift der Leiste)">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A5;"/>
+                                    </ToggleButton>
+                                </StackPanel>
                                 <SelectorBar x:Name="Reiter" Grid.Column="1" VerticalAlignment="Center" SelectionChanged="Reiter_SelectionChanged">
                                     <SelectorBarItem x:Name="ReiterGutachten" Text="Gutachten" IsSelected="True"
                                                      ToolTipService.ToolTip="Gutachtentext (Strg+1)">
@@ -604,7 +772,9 @@
                                                         </Grid>
                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top"
                                                                     Visibility="{x:Bind IstEingabe}">
-                                                            <NumberBox Width="104" Minimum="0" Maximum="{x:Bind Max}" SmallChange="0.25" LargeChange="1"
+                                                            <NumberBox Width="104" Minimum="0" SmallChange="0.25" LargeChange="1"
+                                                                       PreviewKeyDown="Rohpunkt_PreviewKeyDown"
+                                                                       ToolTipService.ToolTip="Eingabe: nächste Station · Umschalt+Eingabe: vorige"
                                                                        SpinButtonPlacementMode="Compact" PlaceholderText="–"
                                                                        NumberFormatter="{x:Bind local:MainWindow.Viertelformat}"
                                                                        Value="{x:Bind Punkte, Mode=TwoWay}"/>
@@ -785,6 +955,13 @@
                                         <TextBlock Text="Teilnehmendenliste importieren…"/>
                                     </StackPanel>
                                 </Button>
+                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.KennziffernEingebenCommand}"
+                                        ToolTipService.ToolTip="Kennziffern als Bereich (z. B. 1001-1060) oder Liste; nicht vergebene entfernen">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE8EF;"/>
+                                        <TextBlock Text="Kennziffern eingeben…"/>
+                                    </StackPanel>
+                                </Button>
                                 <TextBlock Text="{x:Bind ViewModel.TeilnehmendeHinweis, Mode=OneWay}" Opacity="0.7"
                                            Style="{StaticResource CaptionTextBlockStyle}"/>
                                 <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AlleDruckenCommand}"
@@ -812,7 +989,19 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{x:Bind Anzeige}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            <Grid.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="Aus der Teilnehmendenliste entfernen" Tag="{x:Bind}" IsEnabled="{x:Bind IstOffen}"
+                                                                    Click="EintragEntfernen_Click">
+                                                        <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE74D;"/></MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Grid.ContextFlyout>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Anzeige}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{x:Bind Zusatz}" TextTrimming="CharacterEllipsis" Opacity="0.6"
+                                                           Style="{StaticResource CaptionTextBlockStyle}" Visibility="{x:Bind HatZusatz}"/>
+                                            </StackPanel>
                                             <TextBlock Grid.Column="1" Text="{x:Bind Status}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         </Grid>
                                     </DataTemplate>

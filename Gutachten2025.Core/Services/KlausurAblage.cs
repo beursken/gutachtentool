@@ -15,6 +15,9 @@ public sealed class KlausurAblage
     public const string Formulierungen = "Texte.txt";
     public const string Konfiguration = "Klausur.json";
     public const string Notenliste = "Liste.xlsx";
+    /// <summary>Sachverhalt und Lösung als Markdown (Seitenleiste; Teil der Pakete).</summary>
+    public const string Sachverhalt = "Sachverhalt.md";
+    public const string Loesung = "Loesung.md";
 
     static readonly string[] Reserviert =
         { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "LPT1", "LPT2", "LPT3" };

@@ -142,4 +142,52 @@ public static class TextNormalizer
         }
         return absaetze;
     }
+
+    static readonly Regex Gliederungsbegriff = new(
+        @"(?<![\p{L}\d])(?:Tatkomplex|Fallfrage|Frage|Aufgabe)\s+(?:\d{1,3}[a-z]?|[IVX]{1,5})(?![\p{L}\d])",
+        RegexOptions.CultureInvariant);
+
+    /// <summary>Setzt „Frage 1“, „Aufgabe 2“, „Tatkomplex 3“, „Fallfrage 4“ (auch „Frage 2a“, „Tatkomplex II“) fett.</summary>
+    public static List<List<TextLauf>> GliederungFett(List<List<TextLauf>> absaetze)
+    {
+        var ergebnis = new List<List<TextLauf>>(absaetze.Count);
+        foreach (List<TextLauf> absatz in absaetze)
+        {
+            string text = string.Concat(absatz.Select(l => l.T));
+            var treffer = Gliederungsbegriff.Matches(text);
+            if (treffer.Count == 0)
+            {
+                ergebnis.Add(absatz);
+                continue;
+            }
+            var fett = new bool[text.Length];
+            var kursiv = new bool[text.Length];
+            int pos = 0;
+            foreach (TextLauf l in absatz)
+            {
+                for (int j = 0; j < l.T.Length; j++)
+                {
+                    fett[pos + j] = l.F;
+                    kursiv[pos + j] = l.K;
+                }
+                pos += l.T.Length;
+            }
+            foreach (Match m in treffer)
+                for (int j = m.Index; j < m.Index + m.Length; j++) fett[j] = true;
+            var neu = new List<TextLauf>();
+            var sb = new StringBuilder();
+            for (int j = 0; j < text.Length; j++)
+            {
+                if (j > 0 && (fett[j] != fett[j - 1] || kursiv[j] != kursiv[j - 1]))
+                {
+                    neu.Add(new TextLauf(sb.ToString(), fett[j - 1], kursiv[j - 1]));
+                    sb.Clear();
+                }
+                sb.Append(text[j]);
+            }
+            if (sb.Length > 0) neu.Add(new TextLauf(sb.ToString(), fett[^1], kursiv[^1]));
+            ergebnis.Add(neu);
+        }
+        return ergebnis;
+    }
 }

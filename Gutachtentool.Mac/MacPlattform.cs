@@ -53,7 +53,7 @@ public sealed class MacPlattform : IPlattform
 
     public async Task OeffnenAsync(string pfad)
     {
-        if (pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (IstVerweis(pfad))
         {
             await AusfuehrenAsync("/usr/bin/open", pfad); // Standardbrowser
             return;
@@ -100,4 +100,23 @@ public sealed class MacPlattform : IPlattform
         await p.WaitForExitAsync();
         return (p.ExitCode, aus);
     }
+
+    const string LibreOffice = "/Applications/LibreOffice.app/Contents/MacOS/soffice";
+
+    /// <summary>PDF mit LibreOffice (falls installiert); Word für Mac bietet keine zuverlässige Umwandlung ohne Rückfrage.</summary>
+    public async Task<bool> AlsPdfSpeichernAsync(string docx, string pdf)
+    {
+        if (!File.Exists(LibreOffice)) return false;
+        string ordner = Path.GetDirectoryName(pdf)!;
+        (int code, _) = await AusfuehrenAsync(LibreOffice, "--headless", "--convert-to", "pdf", "--outdir", ordner, docx);
+        string erzeugt = Path.Combine(ordner, Path.GetFileNameWithoutExtension(docx) + ".pdf");
+        if (code != 0 || !File.Exists(erzeugt)) return false;
+        if (!string.Equals(erzeugt, pdf, StringComparison.Ordinal)) File.Move(erzeugt, pdf, overwrite: true);
+        return true;
+    }
+
+    static bool IstVerweis(string pfad) =>
+        pfad.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        || pfad.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        || pfad.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
 }

@@ -43,6 +43,9 @@ public sealed partial class MainViewModel : ObservableObject
         Student = string.Empty;
         Matrikel = string.Empty;
         NotenIndex = Notenskala.Vorgabe;
+        UnterlagenHtml = string.Empty;
+        UnterlagenEntwurf = string.Empty;
+        UnterlagenWoerter = Array.Empty<string>();
     }
 
     // ---------- Bindbare Daten ----------
@@ -99,6 +102,11 @@ public sealed partial class MainViewModel : ObservableObject
     {
         base.OnPropertyChanged(e);
         if (_initialisiert) _einstellungenGeaendert = true;
+        if (e.PropertyName is nameof(Student) or nameof(Matrikel) or nameof(Anonym) or nameof(NotenIndex))
+        {
+            ErstnoteAktualisieren();
+            Aktivitaet();
+        }
     }
 
     // ---------- Darstellung (von der View gelesen und geschrieben) ----------
@@ -129,6 +137,12 @@ public sealed partial class MainViewModel : ObservableObject
     {
         get => _einstellungen.BausteinBreite;
         set { _einstellungen.BausteinBreite = value; _einstellungenGeaendert = true; }
+    }
+
+    public double UnterlagenBreite
+    {
+        get => _einstellungen.UnterlagenBreite;
+        set { _einstellungen.UnterlagenBreite = value; _einstellungenGeaendert = true; }
     }
 
     public double BausteinHoehe
@@ -216,6 +230,7 @@ public sealed partial class MainViewModel : ObservableObject
             WordOeffnen = _einstellungen.WordOeffnen;
             BausteineOffen = _einstellungen.BausteineOffen;
             BausteineOben = _einstellungen.BausteineOben;
+            Leiste = Enum.IsDefined((Leistenanzeige)_einstellungen.Leiste) ? (Leistenanzeige)_einstellungen.Leiste : Leistenanzeige.Bausteine;
             KriterienAufgeklappt = _einstellungen.KriterienAufgeklappt;
             Satzvorschlaege = _einstellungen.Satzvorschlaege;
             BearbeiteteKennung = _einstellungen.BearbeiteteKennung ?? string.Empty;
@@ -247,9 +262,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
         finally
         {
+            _arbeitBeginn = _einstellungen.ArbeitBeginn;
+            _arbeitSekunden = _einstellungen.ArbeitSekunden;
+            _letzteAktivitaet = DateTime.Now;
             _initialisiert = true;
             _einstellungenGeaendert = _entwurfGeaendert = false;
         }
+        _ = AktualisierungPruefenAsync();
     }
 
     /// <summary>Übernimmt die Auswahl aus Version 1.0 (Index der festen Listen Gliederung/Schrift).</summary>
@@ -307,7 +326,9 @@ public sealed partial class MainViewModel : ObservableObject
         _noteManuell = false;
         SchemaLaden();
         TeilnehmendeLaden();
+        ErstnotenLaden();
         BausteineLaden();
+        UnterlagenLaden();
         UebersichtAktualisieren();
     }
 
@@ -362,6 +383,16 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
+            if (Erstnote is int erst && ErstnoteAbweichend &&
+                !await _ui.BestaetigenAsync("Abweichung vom Erstgutachten",
+                    $"Erstgutachten: {Notenskala.MitPunkten(erst)}\nZweitgutachten: {Notenskala.MitPunkten(punkte)}\n\n" +
+                    $"Die Noten weichen um {Math.Abs(punkte - erst)} Punkte voneinander ab.\n\nTrotzdem erstellen?",
+                    "Trotzdem erstellen", "Zurück zur Note"))
+            {
+                _ui.Fokussieren(Eingabefeld.Note);
+                return;
+            }
+
             List<Baustein> unpassend = VerwendeteBausteine(entwurfstext).Where(b => !b.PasstZu(punkte)).ToList();
             if (unpassend.Count > 0)
             {
@@ -405,7 +436,9 @@ public sealed partial class MainViewModel : ObservableObject
 
             // Erst Word, dann Excel: schlägt Word fehl, bleibt die Notenliste unverändert.
             string teilpunkteText = HatSchema ? string.Empty : TeilpunkteText();
-            _gutachten.Erzeugen(vorlage, ziel, TextNormalizer.FormatierteAbsaetze(format), Platzhalter(punkte, teilpunkteText),
+            List<List<TextLauf>> absaetze = TextNormalizer.FormatierteAbsaetze(format);
+            if (_konfiguration.GliederungFett) absaetze = TextNormalizer.GliederungFett(absaetze);
+            _gutachten.Erzeugen(vorlage, ziel, absaetze, Platzhalter(punkte, teilpunkteText),
                 !HatSchema && _konfiguration.TeilpunkteAusgeben ? teilpunkteText : null,
                 Bewertungsbogen(), _konfiguration.BogenPunkteAusgeben);
 
@@ -421,9 +454,11 @@ public sealed partial class MainViewModel : ObservableObject
 
             try
             {
-                _notenliste.EintragSetzen(liste, kennung, punkte,
-                    HatSchema ? RohpunkteSpalten()
-                    : Aufgaben.Count > 0 ? Aufgaben.Select(a => (a.Name, a.Wert)).ToList() : null);
+                List<(string Kopf, double? Wert)> zusatz = HatSchema
+                    ? RohpunkteSpalten()
+                    : Aufgaben.Select(a => (Kopf: a.Name, Wert: a.Wert)).ToList();
+                zusatz.AddRange(ErstnotenSpalten(punkte)); // am Ende, damit vorhandene Spalten ihre Bedeutung behalten
+                _notenliste.EintragSetzen(liste, kennung, punkte, zusatz.Count > 0 ? zusatz : null);
             }
             catch (Exception ex)
             {
@@ -432,6 +467,8 @@ public sealed partial class MainViewModel : ObservableObject
                 return; // Entwurf bleibt erhalten, damit erneut generiert werden kann.
             }
 
+            ZeitEintragen(ordner, kennung);
+            NutzungEintragen(ordner, kennung, entwurfstext);
             if (WordOeffnen) _ui.Oeffnen(ziel);
             NaechsteArbeit();
             UebersichtAktualisieren();
@@ -495,6 +532,7 @@ public sealed partial class MainViewModel : ObservableObject
         _editor.Leeren();
         _speicher.EntwurfLoeschen();
         _entwurfGeaendert = false;
+        ZeitZuruecksetzen();
         EinstellungenSpeichern();
         _ui.Fokussieren(Eingabefeld.Student);
     }
@@ -543,6 +581,7 @@ public sealed partial class MainViewModel : ObservableObject
         else _editor.RtfSetzen(e.Rtf);
         BearbeiteteKennung = alsUeberarbeitung ? e.Kennung : string.Empty;
         _entwurfGeaendert = true;
+        ZeitZuruecksetzen();
         EinstellungenSpeichern();
         _ui.Fokussieren(Eingabefeld.Editor);
     }
@@ -647,7 +686,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ---------- Speichern ----------
 
-    public void EntwurfGeaendert() => _entwurfGeaendert = true;
+    public void EntwurfGeaendert()
+    {
+        _entwurfGeaendert = true;
+        Aktivitaet();
+    }
 
     /// <summary>Vom Timer aufgerufen; schreibt nur bei Änderungen.</summary>
     public void Autosave(bool erzwingen = false)
@@ -662,7 +705,11 @@ public sealed partial class MainViewModel : ObservableObject
                 else _speicher.EntwurfSpeichern(_editor.RtfLesen());
                 _entwurfGeaendert = false;
             }
-            if (erzwingen) BausteineSpeichern();
+            if (erzwingen)
+            {
+                BausteineSpeichern();
+                UnterlageSichern(beenden: false);
+            }
         }
         catch (Exception ex)
         {
@@ -692,6 +739,9 @@ public sealed partial class MainViewModel : ObservableObject
         _einstellungen.WordOeffnen = WordOeffnen;
         _einstellungen.BausteineOffen = BausteineOffen;
         _einstellungen.BausteineOben = BausteineOben;
+        _einstellungen.ArbeitBeginn = _arbeitBeginn;
+        _einstellungen.ArbeitSekunden = _arbeitSekunden;
+        _einstellungen.Leiste = (int)Leiste;
         _einstellungen.KriterienAufgeklappt = KriterienAufgeklappt;
         _einstellungen.Satzvorschlaege = Satzvorschlaege;
         _speicher.Speichern(_einstellungen);

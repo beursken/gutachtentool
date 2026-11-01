@@ -35,6 +35,15 @@ public sealed class Einstellungen
 
     public bool BausteineOffen { get; set; } = true;
     public bool BausteineOben { get; set; }
+    /// <summary>Linke Seitenleiste: 0 = Bausteine, 1 = Sachverhalt, 2 = Lösung, 3 = beides (siehe Leistenanzeige).</summary>
+    public int Leiste { get; set; }
+    public double UnterlagenBreite { get; set; } = 380;
+
+    // Bearbeitungszeit der aktuellen Arbeit (übersteht einen Neustart)
+    public DateTime? ArbeitBeginn { get; set; }
+    public double ArbeitSekunden { get; set; }
+    /// <summary>Letzte Suche nach einer neuen Version (höchstens einmal am Tag).</summary>
+    public DateTime UpdateGeprueft { get; set; }
     public double BausteinBreite { get; set; } = 340;
     public double BausteinHoehe { get; set; } = 200;
     public bool KriterienAufgeklappt { get; set; } = true;

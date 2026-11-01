@@ -62,8 +62,12 @@ public sealed partial class MainWindow
                 break;
             case VirtualKey.F6:
                 e.Handled = true;
-                ViewModel.BausteineOffen = !ViewModel.BausteineOffen;
-                if (ViewModel.BausteineOffen) Suche.Focus(FocusState.Keyboard);
+                ViewModel.BausteineUmschalten();
+                if (ViewModel.BausteineSichtbar) Suche.Focus(FocusState.Keyboard);
+                break;
+            case VirtualKey.F7:
+                e.Handled = true;
+                ViewModel.UnterlagenUmschalten();
                 break;
             case VirtualKey.F when strg && umschalt:
                 e.Handled = true;
@@ -259,6 +263,21 @@ public sealed partial class MainWindow
 
     void BausteineSchliessen_Click(object sender, RoutedEventArgs e) => ViewModel.BausteineOffen = false;
 
+    void UnterlagenSchliessen_Click(object sender, RoutedEventArgs e) => ViewModel.UnterlagenUmschalten();
+
+    // Die Umschalter zeigen den Zustand der Leisten (LayoutAnwenden), nicht ihren eigenen Klickzustand.
+    void BausteineKnopf_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.BausteineUmschalten();
+        LayoutAnwenden();
+    }
+
+    void UnterlagenKnopf_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.UnterlagenUmschalten();
+        LayoutAnwenden();
+    }
+
     void UebersichtSchliessen_Click(object sender, RoutedEventArgs e) => ViewModel.SeitenleisteOffen = false;
 
     void Fokus_Click(object sender, RoutedEventArgs e) => FokusSetzen(FokusKnopf.IsChecked == true);
@@ -294,12 +313,19 @@ public sealed partial class MainWindow
             bool bausteine = ViewModel.BausteineOffen && !fokus;
             bool uebersicht = ViewModel.SeitenleisteOffen && !fokus;
             bool uebersichtUeber = breite > 0 && breite < BreiteUebersichtUeberlagert;
-            bool bausteineUeber = !oben && breite > 0 && breite < BreiteBausteineUeberlagert;
+            // Links: Bausteine oder Sachverhalt/Lösung (geteilte Leiste); liegen die Bausteine oben, gehört die Leiste den Unterlagen.
+            bool unterlagen = !fokus && ViewModel.UnterlagenSichtbar;
+            bool bausteineLinks = !oben && bausteine && !ViewModel.ZeigtUnterlagen;
+            bool linksUeber = breite > 0 && breite < BreiteBausteineUeberlagert;
+            bool bausteineUeber = bausteineLinks && linksUeber;
+            double linksBreite = unterlagen ? ViewModel.UnterlagenBreite : ViewModel.BausteinBreite;
             Brush deckend = Farben.Background;
+            BausteineKnopf.IsChecked = !fokus && ViewModel.BausteineSichtbar;
+            UnterlagenKnopf.IsChecked = unterlagen;
 
             // Kopf: zwei Karten nebeneinander oder untereinander
             KopfBereich.Visibility = fokus ? Visibility.Collapsed : Visibility.Visible;
-            bool gestapelt = breite > 0 && breite - (bausteine && !oben && !bausteineUeber ? ViewModel.BausteinBreite : 0) < BreiteKopfGestapelt;
+            bool gestapelt = breite > 0 && breite - ((unterlagen || bausteineLinks) && !linksUeber ? linksBreite : 0) < BreiteKopfGestapelt;
             Grid.SetRow(BewertungKarte, gestapelt ? 1 : 0);
             Grid.SetColumn(BewertungKarte, gestapelt ? 0 : 1);
             Grid.SetColumnSpan(ArbeitKarte, gestapelt ? 2 : 1);
@@ -318,7 +344,7 @@ public sealed partial class MainWindow
             SpalteLinks.Width = new GridLength(0);
             ZeileOben.MinHeight = 0;
             ZeileOben.Height = new GridLength(0);
-            BausteinBereich.Visibility = bausteine ? Visibility.Visible : Visibility.Collapsed;
+            BausteinBereich.Visibility = (oben ? bausteine : bausteineLinks) ? Visibility.Visible : Visibility.Collapsed;
             BausteinBereich.Width = double.NaN;
             BausteinBereich.HorizontalAlignment = HorizontalAlignment.Stretch;
             BausteinBereich.Background = null;
@@ -349,12 +375,34 @@ public sealed partial class MainWindow
                     BausteinBereich.Background = deckend;
                     Canvas.SetZIndex(BausteinBereich, 20);
                 }
-                else if (bausteine)
+                else if (bausteineLinks)
                 {
                     SpalteLinks.Width = new GridLength(Math.Clamp(ViewModel.BausteinBreite, 220, Math.Max(220, breite - 420)));
                     SpalteLinks.MinWidth = 200;
                     SplitterSpalten.Visibility = Visibility.Visible;
                 }
+            }
+
+            // Sachverhalt und Lösung
+            UnterlagenBereich.Visibility = unterlagen ? Visibility.Visible : Visibility.Collapsed;
+            UnterlagenBereich.Width = double.NaN;
+            UnterlagenBereich.HorizontalAlignment = HorizontalAlignment.Stretch;
+            UnterlagenBereich.Background = null;
+            Canvas.SetZIndex(UnterlagenBereich, 0);
+            Grid.SetColumnSpan(UnterlagenBereich, 1);
+            if (unterlagen && linksUeber)
+            {
+                Grid.SetColumnSpan(UnterlagenBereich, 2);
+                UnterlagenBereich.Width = Math.Min(380, breite - 40);
+                UnterlagenBereich.HorizontalAlignment = HorizontalAlignment.Left;
+                UnterlagenBereich.Background = deckend;
+                Canvas.SetZIndex(UnterlagenBereich, 20);
+            }
+            else if (unterlagen)
+            {
+                SpalteLinks.Width = new GridLength(Math.Clamp(ViewModel.UnterlagenBreite, 220, Math.Max(220, breite - 420)));
+                SpalteLinks.MinWidth = 200;
+                SplitterSpalten.Visibility = Visibility.Visible;
             }
 
             // Übersicht
@@ -403,6 +451,25 @@ public sealed partial class MainWindow
             ViewModel.BausteinBreite = e.NewSize.Width;
     }
 
+    void UnterlagenBereich_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_layoutWirdGesetzt || !_geladen || UnterlagenBereich.Visibility != Visibility.Visible) return;
+        if (SplitterSpalten.Visibility == Visibility.Visible && e.NewSize.Width > 150) ViewModel.UnterlagenBreite = e.NewSize.Width;
+    }
+
+    /// <summary>Sachverhalt/Lösung neu aufbauen (nur bei geändertem Inhalt).</summary>
+    void UnterlagenZeichnen()
+    {
+        string html = ViewModel.UnterlagenHtml;
+        if (html == _unterlagenGezeichnet) return;
+        _unterlagenGezeichnet = html;
+        Unterlagenansicht.Fuellen(UnterlagenInhalt, html, 14, UnterlagenAktionen);
+        UnterlagenScroller.ChangeView(null, 0, null, disableAnimation: true);
+        if (UnterlagenSuche.Text.Trim().Length > 0) DispatcherQueue.TryEnqueue(() => UnterlagenSuchen(neu: false));
+    }
+
+    string? _unterlagenGezeichnet;
+
     // ---------- Animationen ----------
 
     /// <summary>Weiches Ein- und Ausblenden der Leisten und Kurzmeldungen.</summary>
@@ -414,6 +481,7 @@ public sealed partial class MainWindow
             foreach (var (element, versatz) in new (UIElement, Vector3)[]
                      {
                          (BausteinBereich, new Vector3(-24, 0, 0)),
+                         (UnterlagenBereich, new Vector3(-24, 0, 0)),
                          (Seitenleiste, new Vector3(24, 0, 0)),
                          (Toast, new Vector3(0, 16, 0)),
                          (KopfBereich, new Vector3(0, -12, 0)),
@@ -622,7 +690,7 @@ public sealed partial class MainWindow
 
     void VorschlagAktualisieren()
     {
-        if (!ViewModel.Satzvorschlaege || _vorschlagUnterdrueckt || Main.FocusState == FocusState.Unfocused)
+        if (_vorschlagUnterdrueckt || Main.FocusState == FocusState.Unfocused)
         {
             VorschlagVerbergen();
             return;
@@ -638,6 +706,24 @@ public sealed partial class MainWindow
         // Nur am Wortende, nicht mitten im Wort.
         Main.Document.GetRange(pos, pos + 1).GetText(TextGetOptions.None, out string danach);
         if (danach.Length > 0 && char.IsLetterOrDigit(danach[0]))
+        {
+            VorschlagVerbergen();
+            return;
+        }
+
+        // Kürzel vor der Schreibmarke: den Baustein grau ankündigen (Tab fügt ihn ein) – auch ohne Satzvorschläge.
+        Main.Document.GetRange(Math.Max(0, pos - 30), pos).GetText(TextGetOptions.None, out string kurz);
+        Match km = KuerzelVorCursor.Match(kurz);
+        if (km.Success && ViewModel.BausteinNachKuerzel(km.Groups[1].Value) is { } kb)
+        {
+            _vorschlaege = new[] { new Satzvorschlag(kb, kb.Text, Fortsetzung: false) };
+            _vorschlagIndex = 0;
+            _vorschlagPosition = pos;
+            _fragmentAnfang = pos - km.Length;
+            VorschlagAnzeigen();
+            return;
+        }
+        if (!ViewModel.Satzvorschlaege)
         {
             VorschlagVerbergen();
             return;
@@ -821,6 +907,8 @@ public sealed partial class MainWindow
         ("F8 oder Win+H", "Diktieren mit der Windows-Spracheingabe"),
         ("F11", "Vollbild ein/aus (Esc im Editor verlässt das Vollbild)"),
         ("F6", "Bausteinliste ein-/ausblenden (bei schmalem Fenster überlagernd)"),
+        ("F7", "Sachverhalt bzw. Lösung in der linken Leiste ein-/ausblenden"),
+        ("Eingabe (Rohpunkte)", "Punkte übernehmen und zur nächsten Station springen (Umschalt+Eingabe: zurück)"),
         ("F9", "Übersicht (Seitenleiste) ein-/ausblenden"),
         ("Strg+Umschalt+F", "Fokusmodus: nur der Editor (Esc beendet)"),
         ("F1", "Diese Hilfe"),
@@ -858,8 +946,29 @@ public sealed partial class MainWindow
                "Ein Klick auf einen Baustein fügt ihn im Reiter „Rohpunkte“ in den zuletzt bearbeiteten Kommentar ein.");
         Absatz("Übersicht und Ändern", fett: true);
         Absatz("Die Seitenleiste (F9) zeigt bewertete und offene Kennungen, Durchschnitt, Median, Durchfallquote und Notenverteilung. Ein Klick auf eine bewertete Arbeit öffnet deren Entwurf zum Ändern.");
+        Absatz("Sachverhalt und Lösung", fett: true);
+        Absatz("Die linke Leiste zeigt statt der Bausteine auch Sachverhalt, Lösung oder beides (Klick auf die Überschrift der Leiste oder F7). " +
+               "Stehen die Bausteine über dem Editor, bleibt die Leiste diesen Inhalten vorbehalten. Der Text kommt mit Paketen aus dem KI-Portal, " +
+               "lässt sich als Markdown bearbeiten (Stiftsymbol) oder aus einer Datei übernehmen (.md, .txt, .docx) und wird mit exportierten Paketen weitergegeben. " +
+               "Strg+Mausrad vergrößert die Anzeige.");
+        Absatz("Seitenleiste Sachverhalt/Lösung", fett: true);
+        Absatz("Das Suchfeld hebt Fundstellen hervor (Eingabe: nächste, Umschalt+Eingabe: vorige). Markierter Text lässt sich per Rechtsklick oder Schaltfläche als Baustein speichern. " +
+               "Ein Klick auf eine Überschrift der Lösung springt zur passenden Zeile im Reiter „Rohpunkte“. Wörter aus Sachverhalt und Lösung (etwa Namen) streicht die Rechtschreibprüfung nicht an.");
+        Absatz("Korrekturfortschritt", fett: true);
+        Absatz("Ordner › Kennziffern eingeben… legt Kennziffern als Bereich („1001-1060“) oder Liste an; nicht vergebene lassen sich gleich mit angeben oder später in der Übersicht entfernen (Rechtsklick). " +
+               "Das Programm misst die Bearbeitungszeit je Arbeit (Pausen über drei Minuten zählen nicht) und zeigt in der Übersicht Beginn, Ende, Dauer, den Median und eine Restzeitprognose.");
+        Absatz("Bausteinstatistik", fett: true);
+        Absatz("Beim Erstellen zählt das Programm, welche Bausteine vorkommen: häufig genutzte sind im Baum farbig markiert, bisher nie genutzte (ab fünf Gutachten) gelb. " +
+               "Bei Paketen aus dem KI-Portal lässt sich die Statistik ohne Kennziffern oder Gutachtentexte an das Portal senden (Ordner › Bausteinstatistik senden).");
+        Absatz("Zweitgutachten", fett: true);
+        Absatz("Enthält ein Paket des KI-Portals Erstnoten (nur Kennziffern und Punkte), zeigt das Programm zur eingegebenen Kennziffer die Erstnote, " +
+               "warnt vor dem Erstellen bei einer Abweichung ab 4 Punkten und trägt Erstnote und Differenz in die Notenliste ein. " +
+               "Die Kennziffern ergänzen die Teilnehmendenliste. „Einverstanden“ übernimmt die Erstnote und fügt einen Zustimmungssatz ein; die Übersicht zeigt die mittlere Abweichung. " +
+               "Beim Export eigener Pakete werden Erstnoten nie mitgegeben.");
+        Absatz("Prüfungsportal", fett: true);
+        Absatz("Ordner › Export für das Prüfungsportal erstellt ein ZIP mit der Notenliste und den Gutachten als PDF (Umwandlung mit Word) für „Noten/Gutachten hochladen“.");
         Absatz("Pakete", fett: true);
-        Absatz("Ordner › Klausur als Paket exportieren erzeugt eine .gtpaket-Datei mit Formulierungen, Word-Vorlage, Klausureinstellungen und Rohpunkteschema (ohne Noten und personenbezogene Daten). " +
+        Absatz("Ordner › Klausur als Paket exportieren erzeugt eine .gtpaket-Datei mit Formulierungen, Word-Vorlage, Klausureinstellungen, Rohpunkteschema, Sachverhalt und Lösung (ohne Noten und personenbezogene Daten). " +
                "Ein Doppelklick auf ein Paket öffnet es im Gutachtentool.");
         Absatz("Diktat", fett: true);
         Absatz("Die Windows-Spracheingabe verarbeitet Sprache in der Regel online bei Microsoft. Bitte keine Namen oder Matrikelnummern diktieren.");

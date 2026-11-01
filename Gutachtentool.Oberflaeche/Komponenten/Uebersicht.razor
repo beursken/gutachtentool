@@ -46,14 +46,25 @@
             <option value="2">bewertet</option>
         </select>
         <span class="klein">@Vm.TeilnehmendeHinweis</span>
+        <button class="knopf leise" title="Kennziffern als Bereich oder Liste eingeben" @onclick="KennziffernAsync">Kennziffern …</button>
     </div>
 
     <ul class="eintraege">
         @foreach (UebersichtEintrag e in Vm.Eintraege)
         {
             <li @key="e" style="opacity:@Zahl(e.Deckkraft)" title="@e.Hinweis" @onclick="() => Oeffnen(e)">
-                <span class="name">@e.Anzeige</span>
+                <span class="name">@e.Anzeige
+                    @if (e.HatZusatz)
+                    {
+                        <small class="zusatz">@e.Zusatz</small>
+                    }
+                </span>
                 <span class="status">@e.Status</span>
+                @if (e.IstOffen)
+                {
+                    <button class="entfernen" title="Aus der Teilnehmendenliste entfernen (z. B. nicht vergeben)"
+                            @onclick="() => Entfernen(e)" @onclick:stopPropagation="true">×</button>
+                }
             </li>
         }
     </ul>
@@ -70,6 +81,18 @@
     async Task Aktualisieren()
     {
         Vm.UebersichtAktualisieren();
+        if (Nachlauf is not null) await Nachlauf();
+    }
+
+    async Task Entfernen(UebersichtEintrag e)
+    {
+        Vm.TeilnehmerEntfernen(e);
+        if (Nachlauf is not null) await Nachlauf();
+    }
+
+    async Task KennziffernAsync()
+    {
+        await Vm.KennziffernEingebenCommand.ExecuteAsync(null);
         if (Nachlauf is not null) await Nachlauf();
     }
 

@@ -30,6 +30,8 @@ public sealed class PaketManifest
     /// <summary>Herkunft, z. B. „KIPortal“.</summary>
     public string? Quelle { get; set; }
     public DateTime Erstellt { get; set; } = DateTime.Now;
+    /// <summary>Nur Pakete des KI-Portals: Adresse und Schlüssel für die Bausteinstatistik (wird nie weitergegeben).</summary>
+    public PaketRueckmeldung? Rueckmeldung { get; set; }
     /// <summary>SHA-256 (hex, Kleinbuchstaben) je enthaltener Datei.</summary>
     public Dictionary<string, string> Pruefsummen { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
@@ -47,6 +49,9 @@ public sealed class PaketInhalt
         if (Dateien.ContainsKey(KlausurAblage.WordVorlage)) teile.Add("Word-Vorlage");
         if (Dateien.ContainsKey(KlausurAblage.Konfiguration)) teile.Add("Formalkriterien/Aufgaben");
         if (Dateien.ContainsKey(Rohpunkte.Rohpunkteschema.Dateiname) || Dateien.ContainsKey(Rohpunkte.Rohpunkteschema.Exceldatei)) teile.Add("Rohpunkteschema");
+        if (Dateien.TryGetValue(Erstnoten.Datei, out byte[]? erst)) teile.Add($"Erstnoten ({Erstnoten.AusBytes(erst).Count} Kennziffern)");
+        if (Dateien.ContainsKey(KlausurAblage.Sachverhalt)) teile.Add("Sachverhalt");
+        if (Dateien.ContainsKey(KlausurAblage.Loesung)) teile.Add("Lösung");
         if (Dateien.Keys.Any(k => k.StartsWith("Erwartungshorizont", StringComparison.OrdinalIgnoreCase))) teile.Add("Erwartungshorizont");
         return string.Join(", ", teile);
     }
@@ -54,8 +59,10 @@ public sealed class PaketInhalt
 
 /// <summary>
 /// Gutachtentool-Paket (*.gtpaket): ZIP mit manifest.json, Texte.txt, MUSTER.docx, Klausur.json und optional Rohpunkteschema
-/// (rohpunkte.json/rohpunkte.xlsx wie im KI-Portal) und Erwartungshorizont.
-/// Enthält nie Notenlisten, Gutachten, Entwürfe oder Teilnehmendenlisten.
+/// (rohpunkte.json/rohpunkte.xlsx wie im KI-Portal), Sachverhalt und Lösung (Markdown) sowie Erwartungshorizont.
+/// Ältere Programmversionen übergehen ihnen unbekannte Dateien; die Formatversion bleibt daher 1.
+/// Enthält nie Notenlisten, Gutachten, Entwürfe oder Teilnehmendenlisten. Einzige Ausnahme: Pakete des KI-Portals für ein
+/// Zweitgutachten dürfen Erstnoten.json (nur Kennziffern und Punkte) enthalten; der Export des Gutachtentools gibt sie nie weiter.
 /// </summary>
 public static class PaketService
 {
@@ -68,6 +75,7 @@ public static class PaketService
     {
         KlausurAblage.Formulierungen, KlausurAblage.WordVorlage, KlausurAblage.Konfiguration,
         Rohpunkte.Rohpunkteschema.Dateiname, Rohpunkte.Rohpunkteschema.Exceldatei,
+        KlausurAblage.Sachverhalt, KlausurAblage.Loesung, Erstnoten.Datei,
         "Erwartungshorizont.md", "Erwartungshorizont.txt", "Erwartungshorizont.docx", "Erwartungshorizont.pdf",
     };
 
@@ -83,6 +91,7 @@ public static class PaketService
         {
             foreach (string name in Inhalte)
             {
+                if (name == Erstnoten.Datei) continue; // Noten verlassen das Gutachtentool nicht
                 string pfad = Path.Combine(klausurOrdner, name);
                 if (!File.Exists(pfad)) continue;
                 byte[] daten = GeteiltLesen(pfad);
@@ -160,6 +169,11 @@ public static class PaketService
                 throw new PaketFehler($"Klausur.json im Paket ist ungültig: {ex.Message}");
             }
         }
+        if (dateien.TryGetValue(Erstnoten.Datei, out byte[]? erstnoten))
+        {
+            try { Erstnoten.AusBytes(erstnoten); }
+            catch (InvalidDataException ex) { throw new PaketFehler(ex.Message, ex); }
+        }
         if (dateien.TryGetValue(Rohpunkte.Rohpunkteschema.Dateiname, out byte[]? schema))
         {
             try
@@ -193,6 +207,10 @@ public static class PaketService
             File.WriteAllBytes(tmp, daten);
             File.Move(tmp, ziel, overwrite: true);
         }
+
+        // Kennziffern der Erstnoten als Teilnehmendenliste (Vorschläge, offene Arbeiten in der Übersicht).
+        if (inhalt.Dateien.TryGetValue(Erstnoten.Datei, out byte[]? erst))
+            Erstnoten.TeilnehmendeErgaenzen(klausurOrdner, Erstnoten.AusBytes(erst));
 
         // Rohpunkteschema: maßgeblich ist rohpunkte.json des Pakets; eine ältere Excel-Fassung im Ordner wird beiseitegelegt,
         // eine mitgelieferte gilt als gleichwertig (älterer Zeitstempel, damit sie die JSON-Datei nicht überschreibt).

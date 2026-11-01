@@ -37,6 +37,12 @@ public sealed class Klausurkonfiguration
     /// </summary>
     public bool BogenPunkteAusgeben { get; set; }
 
+    /// <summary>
+    /// „Frage 1“, „Aufgabe 2“, „Tatkomplex 3“, „Fallfrage 4“ im Gutachten fett setzen. Vorgabe: an
+    /// (fehlt der Wert in Klausur.json, bleibt es bei an).
+    /// </summary>
+    public bool GliederungFett { get; set; } = true;
+
     public List<Aufgabe> Aufgaben { get; set; } = new();
 
     /// <summary>Optional: Mindest-Rohpunkte für 1, 2, … 18 Punkte (18 aufsteigende Werte). Leer = linear.</summary>

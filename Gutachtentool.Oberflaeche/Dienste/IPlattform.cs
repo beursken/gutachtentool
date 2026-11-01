@@ -39,4 +39,7 @@ public interface IPlattform
     /// vor dem Aufruf eingegangene Dateien werden nachgereicht. Browser: keine.
     /// </summary>
     void DateienAbonnieren(Func<string, Task> oeffnen);
+
+    /// <summary>Word-Datei als PDF speichern (Mac: mit LibreOffice, falls installiert); false = nicht möglich.</summary>
+    Task<bool> AlsPdfSpeichernAsync(string docx, string pdf);
 }

@@ -60,6 +60,7 @@ public sealed partial class MainViewModel
         _bausteineGeaendert = false;
         PassendAktualisieren();
         TrefferAktualisieren();
+        NutzungAnwenden();
     }
 
     /// <summary>Schreibt nur, wenn erfolgreich geladen und tatsächlich geändert – nie über eine fremde Datei.</summary>

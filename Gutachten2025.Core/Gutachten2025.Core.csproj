@@ -6,7 +6,7 @@
     <RootNamespace>Gutachten2025</RootNamespace>
     <AssemblyName>Gutachten2025.Core</AssemblyName>
     <Nullable>enable</Nullable>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Product>Gutachtentool</Product>
     <Company>Universität Passau</Company>
     <!-- Für die Browser-Fassung: Trimmen nur mit Analyse, damit Reflection-Lücken auffallen. -->

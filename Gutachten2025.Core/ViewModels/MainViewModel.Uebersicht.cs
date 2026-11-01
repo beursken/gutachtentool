@@ -81,6 +81,9 @@ public sealed partial class MainViewModel
 
         var nachKennung = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var (k, p) in noten) nachKennung[k] = p;
+        Dictionary<string, Korrekturzeit> zeiten = Korrekturzeiten.Laden(ordner);
+        string Zeit(string k) => zeiten.TryGetValue(k, out Korrekturzeit? z) && z.Beginn != default ? ZeitText(z) : string.Empty;
+        string Erst(string k) => _erstnoten.TryGetValue(k, out int e) ? $"Erstgutachten {e}" : string.Empty;
 
         var eintraege = new List<UebersichtEintrag>();
         var bekannt = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -94,6 +97,8 @@ public sealed partial class MainViewModel
                 Punkte = nachKennung.TryGetValue(t.Kennung, out int p) ? p : null,
                 HatEntwurf = EntwurfArchiv.Existiert(ordner, t.Kennung),
                 SchemaGeaendert = SchemaAbweichend(ordner, t.Kennung),
+                Zeit = Zeit(t.Kennung),
+                Erstnote = Erst(t.Kennung),
             });
         }
         foreach (var (k, p) in nachKennung)
@@ -102,11 +107,12 @@ public sealed partial class MainViewModel
             eintraege.Add(new UebersichtEintrag
             {
                 Kennung = k, Punkte = p, HatEntwurf = EntwurfArchiv.Existiert(ordner, k), SchemaGeaendert = SchemaAbweichend(ordner, k),
+                Zeit = Zeit(k), Erstnote = Erst(k),
             });
         }
 
         // Nur bei Änderungen neu aufbauen (die Übersicht wird auch bei jeder Fensteraktivierung aktualisiert).
-        string stand = KlausurName + "|" + string.Join(";", eintraege.Select(e => $"{e.Kennung}:{e.Name}:{e.Punkte}:{e.HatEntwurf}:{e.SchemaGeaendert}"));
+        string stand = KlausurName + "|" + string.Join(";", eintraege.Select(e => $"{e.Kennung}:{e.Name}:{e.Punkte}:{e.HatEntwurf}:{e.SchemaGeaendert}:{e.Zusatz}"));
         if (stand == _uebersichtStand) return;
         _uebersichtStand = stand;
         Kennzahlen.Clear();
@@ -125,6 +131,8 @@ public sealed partial class MainViewModel
 
         List<int> punkte = nachKennung.Values.ToList();
         foreach (Kennzahl z in Statistik.Kennzahlen(punkte, _teilnehmende.Count)) Kennzahlen.Add(z);
+        int offen = HatTeilnehmende ? Math.Max(0, _teilnehmende.Count - bewertet) : 0;
+        foreach (Kennzahl z in ZusatzKennzahlen(nachKennung, zeiten, offen)) Kennzahlen.Add(z);
         if (punkte.Count > 0)
             foreach (VerteilungsBalken b in Statistik.Verteilung(punkte, BalkenHoehe)) Verteilung.Add(b);
     }
@@ -337,7 +345,7 @@ public sealed partial class MainViewModel
             };
             PaketService.Exportieren(ordner, manifest, ziel);
             _ui.Melden(Meldungsart.Erfolg, "Paket gespeichert",
-                $"{Path.GetFileName(ziel)} enthält Formulierungen, Word-Vorlage und Klausureinstellungen – keine Noten, Gutachten, Entwürfe oder Teilnehmenden.");
+                $"{Path.GetFileName(ziel)} enthält Formulierungen, Word-Vorlage, Klausureinstellungen sowie ggf. Rohpunkteschema, Sachverhalt und Lösung – keine Noten, Gutachten, Entwürfe oder Teilnehmenden.");
         }
         catch (Exception ex)
         {
@@ -384,6 +392,7 @@ public sealed partial class MainViewModel
             BausteineSpeichern();
             string ordner = Path.Combine(_ablage.Wurzel, _ablage.KlausurEinrichten(name, _notenliste));
             int gesichert = PaketService.Entpacken(inhalt, ordner);
+            if (m.Rueckmeldung is { Gueltig: true } rueck) rueck.Speichern(ordner); // für die Bausteinstatistik
 
             var kriterien = AktuelleKriterien();
             var teilpunkte = AktuelleTeilpunkte();

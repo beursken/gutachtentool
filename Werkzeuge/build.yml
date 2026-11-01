@@ -15,7 +15,7 @@ env:
 
 jobs:
   kern:
-    name: Kern (Gutachten2025.Core)
+    name: Kern (Gutachten2025.Core, Unit-Tests)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -23,6 +23,14 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet build Gutachten2025.Core/Gutachten2025.Core.csproj -c Release
+      - name: Unit-Tests (Markdown, Pakete, Erstnoten, Kennziffern, Rohpunkte, Notenvorschlag)
+        run: dotnet test Gutachten2025.Tests/Gutachten2025.Tests.csproj -c Release --logger "trx;LogFileName=tests.trx" --logger "console;verbosity=normal"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: Testergebnisse
+          path: Gutachten2025.Tests/TestResults/*.trx
+          if-no-files-found: ignore
 
   windows:
     name: Windows (WinUI 3, Inno Setup)
@@ -38,7 +46,7 @@ jobs:
       - name: Installationsprogramm erstellen
         shell: pwsh
         run: ./Installer/Erstellen.ps1
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: Gutachtentool-Windows
           path: Installer/Ausgabe/*.exe
@@ -55,7 +63,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Veröffentlichen
         run: bash Werkzeuge/web-erstellen.sh
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: Gutachtentool-Web
           path: publish/web/wwwroot
@@ -78,7 +86,7 @@ jobs:
           MAC_NOTAR_SCHLUESSEL: ${{ secrets.MAC_NOTAR_SCHLUESSEL }}
           MAC_NOTAR_SCHLUESSEL_ID: ${{ secrets.MAC_NOTAR_SCHLUESSEL_ID }}
           MAC_NOTAR_AUSSTELLER: ${{ secrets.MAC_NOTAR_AUSSTELLER }}
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: Gutachtentool-Mac
           path: publish/mac/*.dmg

@@ -62,6 +62,21 @@ public sealed partial class Baustein : ObservableObject
     [NotifyPropertyChangedFor(nameof(AnzahlText))]
     public partial int Anzahl { get; set; }
 
+    /// <summary>In wie vielen erstellten Gutachten der Baustein vorkommt (Bausteinstatistik).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NutzungText), nameof(Hinweis), nameof(HatNutzungstext))]
+    public partial int Nutzung { get; set; }
+
+    /// <summary>0 = keine Statistik, 1 = bisher nie verwendet, 2 = verwendet, 3 = häufig verwendet.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NutzungText), nameof(Haeufig), nameof(Unbenutzt), nameof(HatNutzungstext))]
+    public partial int NutzungStufe { get; set; }
+
+    public bool Haeufig => NutzungStufe == 3;
+    public bool Unbenutzt => NutzungStufe == 1;
+    public string NutzungText => IstGruppe || NutzungStufe == 0 ? string.Empty : Nutzung == 0 ? "nie" : $"{Nutzung}×";
+    public bool HatNutzungstext => NutzungText.Length > 0;
+
     /// <summary>Suchbegriffe zum Hervorheben (nur in der Trefferliste gesetzt).</summary>
     [ObservableProperty]
     public partial string? Suchbegriffe { get; set; }
@@ -97,6 +112,7 @@ public sealed partial class Baustein : ObservableObject
             string s = Text;
             if (Kuerzel.Length > 0) s += $"\nKürzel: {Kuerzel} (im Editor „{Kuerzel}“ + Tab)";
             if (HatBereich) s += $"\nPassend für {Bereich.Replace(" P.", " Punkte")}";
+            if (NutzungStufe > 0) s += Nutzung == 0 ? "\nBisher in keinem Gutachten verwendet" : $"\nIn {Nutzung} Gutachten verwendet";
             return s + "\nKlick oder Ziehen in den Editor: einfügen · Rechtsklick: bearbeiten";
         }
     }

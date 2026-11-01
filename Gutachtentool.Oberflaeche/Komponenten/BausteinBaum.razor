@@ -26,6 +26,10 @@
                     {
                         <span class="marke bereich b@(b.BereichArt)">@b.Bereich</span>
                     }
+                    @if (b.HatNutzungstext)
+                    {
+                        <span class="marke nutzung n@(b.NutzungStufe)">@b.NutzungText</span>
+                    }
                 }
                 <span class="werkzeuge" @onclick:stopPropagation="true">
                     @if (b.IstGruppe)

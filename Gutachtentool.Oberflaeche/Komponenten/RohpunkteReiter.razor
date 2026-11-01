@@ -1,4 +1,5 @@
 @* Reiter „Rohpunkte“: Punkte und Anmerkungen je Gliederungspunkt des Rohpunkteschemas. *@
+@inject IJSRuntime Js
 
 <section class="rohpunkte">
     <div class="rp-kopf">
@@ -18,7 +19,7 @@
         {
             int n = i;
             RohpunktZeile z = Vm.Rohpunktzeilen[n];
-            <div class="rp-zeile @Klasse(z)" @key="z">
+            <div class="rp-zeile @Klasse(z)" @key="z" id="@ZeilenId(n)">
                 <div class="rp-titel" style="padding-left:@Px(z.EinrueckungLinks)">
                     <span class="@(z.Fett ? "fett" : "")">@z.Titel</span>
                     @if (z.HatEtiketten)
@@ -36,8 +37,10 @@
                 @if (z.IstEingabe)
                 {
                     <div class="rp-punkte">
-                        <input type="number" min="0" max="@Hauptseite.ZahlText(z.Max)" step="0.25" aria-label="Punkte für @z.Titel"
-                               value="@Hauptseite.ZahlText(z.Punkte)" @onchange="e => PunkteSetzen(z, e.Value as string)" />
+                        <input id="@PunkteId(n)" type="number" min="0" step="0.25" aria-label="Punkte für @z.Titel"
+                               title="Eingabe: nächste Station · Umschalt+Eingabe: vorige"
+                               value="@Hauptseite.ZahlText(z.Punkte)" @onchange="e => PunkteSetzen(z, e.Value as string)"
+                               @onkeydown="e => TasteAsync(e, n)" />
                         <span class="max">@z.MaxText</span>
                     </div>
                     <textarea id="@FeldId(n)" class="rp-anmerkung" rows="2" spellcheck="true" lang="de" placeholder="Anmerkung (erscheint im Gutachten)"
@@ -59,6 +62,20 @@
     [Parameter] public EventCallback<int> KommentarGewaehlt { get; set; }
 
     public static string FeldId(int n) => "rp-anmerkung-" + n.ToString(CultureInfo.InvariantCulture);
+
+    public static string PunkteId(int n) => "rp-punkte-" + n.ToString(CultureInfo.InvariantCulture);
+
+    public static string ZeilenId(int n) => "rp-zeile-" + n.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Schnellerfassung: Eingabe springt zur nächsten Station (Umschalt+Eingabe: zur vorigen).</summary>
+    async Task TasteAsync(KeyboardEventArgs e, int n)
+    {
+        if (e.Key != "Enter") return;
+        int schritt = e.ShiftKey ? -1 : 1;
+        int i = n + schritt;
+        while (i >= 0 && i < Vm.Rohpunktzeilen.Count && !Vm.Rohpunktzeilen[i].IstEingabe) i += schritt;
+        if (i >= 0 && i < Vm.Rohpunktzeilen.Count) await Js.InvokeVoidAsync("gutachtentool.rohpunktZeigen", ZeilenId(i));
+    }
 
     static string Px(double wert) => wert.ToString("0", CultureInfo.InvariantCulture) + "px";
 
