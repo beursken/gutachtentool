@@ -45,7 +45,9 @@
     <Content Include="Images\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Images\StoreLogo.png" />
     <Content Include="Images\Wide310x150Logo.scale-200.png" />
-    <Content Include="gutachten.ico" />
+    <!-- Fenstersymbol (AppWindow.SetIcon) und Titelleiste: neben der EXE benötigt -->
+    <Content Include="gutachten.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Images\Titelleiste.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Modelle, ViewModel und Dienste liegen in Gutachten2025.Core (gemeinsam mit Mac- und Browser-Fassung).

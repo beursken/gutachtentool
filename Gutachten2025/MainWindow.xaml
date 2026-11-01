@@ -39,7 +39,7 @@
                 <ColumnDefinition x:Name="RightDragColumn" Width="*" MinWidth="48"/>
                 <ColumnDefinition x:Name="RightPaddingColumn" Width="100"/>
             </Grid.ColumnDefinitions>
-            <Image x:Name="TitleBarIcon" Source="ms-appx:///Assets/Square44x44.png"
+            <Image x:Name="TitleBarIcon"
                    Grid.Column="1" Width="16" Height="16" Margin="8,0,4,0"/>
             <TextBlock x:Name="TitleBarTextBlock" Text="Gutachtentool"
                        Style="{StaticResource CaptionTextBlockStyle}"

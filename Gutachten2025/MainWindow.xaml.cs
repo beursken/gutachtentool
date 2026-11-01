@@ -43,6 +43,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        SymbolSetzen();
         AppTitleBar.Loaded += (_, _) => TitelleisteAktualisieren();
         AppTitleBar.SizeChanged += (_, _) => TitelleisteAktualisieren();
 
@@ -161,6 +162,25 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         WordBeenden();
         FensterMerken();
         ViewModel.Autosave(erzwingen: true);
+    }
+
+    /// <summary>
+    /// Fenstersymbol für Taskleiste, Vorschau und Alt+Tab (ohne SetIcon zeigt die Vorschau kein Symbol)
+    /// sowie das Symbol in der eigenen Titelleiste.
+    /// </summary>
+    void SymbolSetzen()
+    {
+        try
+        {
+            string ico = System.IO.Path.Combine(AppContext.BaseDirectory, "gutachten.ico");
+            if (System.IO.File.Exists(ico)) AppWindow.SetIcon(ico);
+            string png = System.IO.Path.Combine(AppContext.BaseDirectory, "Images", "Titelleiste.png");
+            if (System.IO.File.Exists(png)) TitleBarIcon.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(png));
+        }
+        catch (Exception ex)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
     }
 
     // ---------- Klausurauswahl ----------
