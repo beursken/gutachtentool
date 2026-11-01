@@ -1,0 +1,105 @@
+# Signierte Veröffentlichung der Windows-Fassung über SignPath (kostenlos für Open Source, SignPath Foundation).
+# Auslöser: Tag v* (z. B. v1.3.0) oder manuell. Jede Signatur muss in SignPath freigegeben werden (Approver).
+# Vorlage: Werkzeuge/release.yml (übernehmen mit Werkzeuge/Ablauf-uebernehmen.ps1). Einrichtung: CODE_SIGNING.md.
+name: Release (signiert)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  windows:
+    name: Windows signieren
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Programmdateien erstellen
+        shell: pwsh
+        run: ./Installer/Erstellen.ps1 -NurVeroeffentlichen
+
+      - name: Unsignierte Programmdateien bereitstellen
+        id: programm
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-programm-unsigniert
+          path: Installer/publish/x64
+          if-no-files-found: error
+
+      - name: Programmdateien signieren (SignPath)
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: gutachtentool
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: programmdateien
+          github-artifact-id: ${{ steps.programm.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: Installer/publish/signiert
+
+      - name: Signierte Programmdateien übernehmen
+        shell: pwsh
+        run: |
+          Remove-Item Installer/publish/x64 -Recurse -Force
+          Move-Item Installer/publish/signiert Installer/publish/x64
+          $sig = Get-AuthenticodeSignature Installer/publish/x64/Gutachten2025.exe
+          if ($sig.Status -ne 'Valid') { throw "Gutachten2025.exe ist nicht gültig signiert: $($sig.Status)" }
+          Write-Host "Signiert von: $($sig.SignerCertificate.Subject)"
+
+      - name: Inno Setup installieren
+        run: choco install innosetup --no-progress -y
+
+      - name: Setup erstellen
+        shell: pwsh
+        run: ./Installer/Erstellen.ps1 -OhneVeroeffentlichen
+
+      - name: Unsigniertes Setup bereitstellen
+        id: setup
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-setup-unsigniert
+          path: Installer/Ausgabe/*.exe
+          if-no-files-found: error
+
+      - name: Setup signieren (SignPath)
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: gutachtentool
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: setup
+          github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: Installer/Signiert
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Gutachtentool-Windows-signiert
+          path: Installer/Signiert/*.exe
+          if-no-files-found: error
+
+      - name: GitHub-Release anlegen
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME (Get-ChildItem Installer/Signiert/*.exe).FullName `
+            --title "Gutachtentool $env:GITHUB_REF_NAME" `
+            --notes "Signierte Windows-Fassung. Mac- und Browser-Fassung: Artefakte des Ablaufs „Build“ zu diesem Stand."
