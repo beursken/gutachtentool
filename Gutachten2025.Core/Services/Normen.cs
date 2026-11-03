@@ -165,10 +165,11 @@ public static class Normverweise
                     erwartet = null;
                 }
                 else if (Verbindung.Contains(w)) { }
-                else if (IstGesetz(w))
+                else if (IstGesetz(w) || (w.Length > 2 && w.EndsWith('.') && IstGesetz(w[..^1])))
                 {
-                    gesetz = w;
-                    ende = m.Index + m.Length;
+                    // „BGB.“ am Satzende: Der Punkt gehört nicht zum Kürzel.
+                    gesetz = w.TrimEnd('.');
+                    ende = m.Index + gesetz.Length;
                     j++;
                     break;
                 }

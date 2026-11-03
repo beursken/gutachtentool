@@ -487,6 +487,8 @@
                                                   IsChecked="{x:Bind ViewModel.Anonym, Mode=TwoWay}"/>
                                     </Grid>
                                     <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8">
+                                        <Border BorderThickness="2" CornerRadius="6" Padding="2"
+                                                BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(ViewModel.KennungVorhanden), Mode=OneWay}">
                                         <AutoSuggestBox x:Name="Student" Width="200"
                                                         Header="{x:Bind ViewModel.KennungsBezeichnung, Mode=OneWay}"
                                                         UpdateTextOnSelect="False"
@@ -495,16 +497,24 @@
                                                         Text="{x:Bind ViewModel.Student, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                         TextChanged="Student_TextChanged"
                                                         SuggestionChosen="Student_SuggestionChosen"/>
-                                        <TextBox x:Name="Matrikel" Width="140" Header="Matrikelnummer"
+                                        </Border>
+                                        <TextBox x:Name="Matrikel" Width="140" Header="Matrikelnummer" Margin="4"
                                                  Visibility="{x:Bind ViewModel.MatrikelSichtbar, Mode=OneWay}"
                                                  Text="{x:Bind ViewModel.Matrikel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <ComboBox x:Name="Grade" Header="Note" MinWidth="180"
-                                                  ToolTipService.ToolTip="Bausteine mit unpassendem Punktebereich werden abgeblendet"
-                                                  ItemsSource="{x:Bind ViewModel.NotenAuswahl}"
-                                                  SelectedIndex="{x:Bind ViewModel.NotenIndex, Mode=TwoWay}"/>
-                                        <NumberBox x:Name="Seiten" Header="Seiten" Width="110"
-                                                   Minimum="0" Maximum="80" SpinButtonPlacementMode="Compact"
-                                                   Value="{x:Bind ViewModel.Seiten, Mode=TwoWay}"/>
+                                        <Border BorderThickness="2" CornerRadius="6" Padding="2"
+                                                BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(ViewModel.NoteOffen), Mode=OneWay}">
+                                            <ComboBox x:Name="Grade" Header="Note" MinWidth="180"
+                                                      ToolTipService.ToolTip="Bausteine mit unpassendem Punktebereich werden abgeblendet (farbiger Rahmen: Note noch nicht gewählt)"
+                                                      ItemsSource="{x:Bind ViewModel.NotenAuswahl}"
+                                                      SelectedIndex="{x:Bind ViewModel.NotenIndex, Mode=TwoWay}"/>
+                                        </Border>
+                                        <Border BorderThickness="2" CornerRadius="6" Padding="2"
+                                                BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(ViewModel.SeitenOffen), Mode=OneWay}">
+                                            <NumberBox x:Name="Seiten" Header="Seiten" Width="110"
+                                                       Minimum="0" Maximum="80" SpinButtonPlacementMode="Compact"
+                                                       ToolTipService.ToolTip="Seitenzahl der Arbeit (farbiger Rahmen: noch keine angegeben)"
+                                                       Value="{x:Bind ViewModel.Seiten, Mode=TwoWay}"/>
+                                        </Border>
                                     </controls:WrapPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.ErstnoteSichtbar, Mode=OneWay}"
                                                 ToolTipService.ToolTip="Erstnoten aus dem Paket (Erstnoten.json im Klausurordner); Warnung ab 4 Punkten Abweichung">
@@ -528,6 +538,14 @@
                                     <TextBlock Text="{x:Bind ViewModel.BearbeitungsHinweis, Mode=OneWay}" TextWrapping="Wrap"
                                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                                Visibility="{x:Bind ViewModel.InBearbeitung, Mode=OneWay}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.KennungVorhanden, Mode=OneWay}">
+                                        <FontIcon FontSize="14" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+                                        <TextBlock Text="{x:Bind ViewModel.KennungHinweis, Mode=OneWay}" TextWrapping="Wrap" MaxWidth="520"
+                                                   VerticalAlignment="Center" Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                        <HyperlinkButton Content="Öffnen" Padding="4,0" Command="{x:Bind ViewModel.VorhandenesOeffnenCommand}"
+                                                         ToolTipService.ToolTip="Vorhandenes Gutachten zum Ändern öffnen"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
@@ -540,13 +558,18 @@
                                               IsExpanded="{x:Bind ViewModel.KriterienAufgeklappt, Mode=TwoWay}">
                                         <Expander.Header>
                                             <StackPanel Padding="0,6">
-                                                <TextBlock Text="Formalkriterien"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="Formalkriterien"/>
+                                                    <FontIcon FontSize="13" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                                              Visibility="{x:Bind ViewModel.GliederungOffen, Mode=OneWay}"
+                                                              ToolTipService.ToolTip="Zur Gliederung ist noch nichts angegeben"/>
+                                                </StackPanel>
                                                 <TextBlock Text="{x:Bind ViewModel.KriterienZusammenfassung, Mode=OneWay}"
                                                            Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"
                                                            TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
                                         </Expander.Header>
-                                        <ItemsControl ItemsSource="{x:Bind ViewModel.Kriterien}">
+                                        <ItemsControl x:Name="KriterienListe" ItemsSource="{x:Bind ViewModel.Kriterien}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
@@ -554,9 +577,12 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="models:KriteriumAuswahl">
-                                                    <ComboBox Header="{x:Bind Name}" MinWidth="200" MaxWidth="360"
-                                                              ItemsSource="{x:Bind Optionen}"
-                                                              SelectedIndex="{x:Bind Index, Mode=TwoWay}"/>
+                                                    <Border BorderThickness="2" CornerRadius="6" Padding="2"
+                                                            BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(Hervorgehoben), Mode=OneWay}">
+                                                        <ComboBox Header="{x:Bind Name}" MinWidth="200" MaxWidth="360"
+                                                                  ItemsSource="{x:Bind Optionen}"
+                                                                  SelectedIndex="{x:Bind Index, Mode=TwoWay}"/>
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -684,6 +710,10 @@
                                 <AppBarToggleButton Label="Satzvorschläge" IsChecked="{x:Bind ViewModel.Satzvorschlaege, Mode=TwoWay}"
                                                     ToolTipService.ToolTip="Satzvorschläge beim Tippen (Tab: übernehmen, Strg+Leertaste: nächster, Esc: verwerfen)">
                                     <AppBarToggleButton.Icon><FontIcon FontSize="16" Glyph="&#xE82F;"/></AppBarToggleButton.Icon>
+                                </AppBarToggleButton>
+                                <AppBarToggleButton Label="Pflichtangaben" IsChecked="{x:Bind ViewModel.AngabenHervorheben, Mode=TwoWay}"
+                                                    ToolTipService.ToolTip="Fehlende Angaben (Note, Seiten, Gliederung) farbig umranden und vor dem Erstellen nachfragen">
+                                    <AppBarToggleButton.Icon><FontIcon FontSize="16" Glyph="&#xE73E;"/></AppBarToggleButton.Icon>
                                 </AppBarToggleButton>
                                 <AppBarSeparator/>
                                 <AppBarButton Label="Verkleinern" Click="ZoomMinus_Click" ToolTipService.ToolTip="Verkleinern (Strg+Minus, Strg+Mausrad)">

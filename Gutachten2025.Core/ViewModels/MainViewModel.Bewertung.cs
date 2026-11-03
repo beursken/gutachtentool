@@ -88,6 +88,7 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(HatKriterien));
         OnPropertyChanged(nameof(KriterienZusammenfassung));
         OnPropertyChanged(nameof(TeilpunkteWerdenAusgegeben));
+        KriterienHervorheben();
         PunkteAktualisieren();
     }
 
@@ -95,7 +96,11 @@ public sealed partial class MainViewModel
     {
         if (_initialisiert) _einstellungenGeaendert = true;
         if (sender is AufgabenPunkte) PunkteAktualisieren();
-        else OnPropertyChanged(nameof(KriterienZusammenfassung));
+        else if (e.PropertyName == nameof(KriteriumAuswahl.Index))
+        {
+            OnPropertyChanged(nameof(KriterienZusammenfassung));
+            KriterienHervorheben();
+        }
     }
 
     Dictionary<string, string> AktuelleKriterien()

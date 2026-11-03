@@ -206,7 +206,7 @@
             @if (_vm is not null)
             {
                 <section class="angaben">
-                    <div class="feldgruppe">
+                    <div class="feldgruppe @(_vm.KennungVorhanden ? "offen" : "")">
                         <label for="f-student">@_vm.KennungsBezeichnung</label>
                         <input id="f-student" list="teilnehmende" value="@_vm.Student" @onchange="e => StudentSetzen(e.Value as string)" autocomplete="off" />
                         <datalist id="teilnehmende">
@@ -224,7 +224,7 @@
                         </div>
                     }
                     <label class="schalter"><input type="checkbox" checked="@_vm.Anonym" @onchange="e => _vm.Anonym = e.Value is true" /> anonym</label>
-                    <div class="feldgruppe">
+                    <div class="feldgruppe @(_vm.NoteOffen ? "offen" : "")" title="@(_vm.NoteOffen ? "Note noch nicht gewählt" : null)">
                         <label for="f-note">Note</label>
                         <select id="f-note" value="@_vm.NotenIndex" @onchange="e => _vm.NotenIndex = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
                             @for (int i = 0; i < _vm.NotenAuswahl.Count; i++)
@@ -233,7 +233,7 @@
                             }
                         </select>
                     </div>
-                    <div class="feldgruppe schmal">
+                    <div class="feldgruppe schmal @(_vm.SeitenOffen ? "offen" : "")" title="@(_vm.SeitenOffen ? "Seitenzahl fehlt" : null)">
                         <label for="f-seiten">Seiten</label>
                         <input id="f-seiten" type="number" min="0" step="1" value="@ZahlText(_vm.Seiten)" @onchange="e => _vm.Seiten = Math.Max(0, ZahlLesen(e.Value as string, 0))" />
                     </div>
@@ -256,6 +256,15 @@
                     {
                         <div class="hinweiszeile">@_vm.BearbeitungsHinweis</div>
                     }
+                    @if (_vm.KennungVorhanden)
+                    {
+                        <div class="hinweiszeile warnung">⚠ @_vm.KennungHinweis
+                            <button class="verweis" @onclick="() => Los(_vm.VorhandenesOeffnenCommand)">Öffnen</button>
+                        </div>
+                    }
+                    <label class="schalter" title="Fehlende Angaben (Note, Seiten, Gliederung) hervorheben und vor dem Erstellen nachfragen">
+                        <input type="checkbox" checked="@_vm.AngabenHervorheben" @onchange="e => _vm.AngabenHervorheben = e.Value is true" /> Pflichtangaben prüfen
+                    </label>
                 </section>
 
                 @if (_vm.HatKriterien || _vm.TeilpunkteSichtbar || _vm.HatNotenvorschlag)
@@ -263,9 +272,9 @@
                     <section class="bewertung">
                         @foreach (KriteriumAuswahl k in _vm.Kriterien)
                         {
-                            <div class="feldgruppe">
+                            <div class="feldgruppe @(k.Hervorgehoben ? "offen" : "")">
                                 <label>@k.Name</label>
-                                <select value="@k.Index" @onchange="e => k.Index = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                                <select id="@(k.Name.Contains("Gliederung", StringComparison.CurrentCultureIgnoreCase) ? "f-kriterien" : null)" value="@k.Index" @onchange="e => k.Index = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
                                     @for (int i = 0; i < k.Optionen.Count; i++)
                                     {
                                         <option value="@i">@k.Optionen[i]</option>

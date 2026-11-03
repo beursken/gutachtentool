@@ -969,6 +969,10 @@ public sealed partial class MainWindow
                "Fehlende Bundesgesetze lädt das Programm von gesetze-im-internet.de, EU-Rechtsakte von EUR-Lex (jeweils ganz, zum Durchblättern), übrige Normen wie Landesrecht einzeln über kvasir; alles bleibt für alle Klausuren gespeichert. " +
                "Zitate in Sachverhalt, Lösung und im eigenen Text zeigen beim Überfahren mit der Maus den zitierten Absatz, Satz, die Nummer oder den Buchstaben; Klick (in der Leiste) bzw. Strg+Klick (im Text) öffnet die Norm im Gesetz und hebt die Stelle hervor. " +
                "„▲/▼“ blendet weitere Vorschriften ein, Zurück/Vor (Alt+Pfeil) führt durch den Verlauf. Über „Bearbeiten“ lassen sich eigene Normen (z. B. Prüfungsordnung) als Markdown ergänzen; sie gehören zur Klausur und reisen im Paket mit.");
+        Absatz("Pflichtangaben", fett: true);
+        Absatz("Gibt es zur eingegebenen Kennziffer bereits ein Gutachten, erscheint sofort ein Hinweis (mit „Öffnen“ zum Ändern). " +
+               "Note, Seitenzahl und das Formalkriterium „Gliederung“ sind farbig umrandet, bis etwas gewählt ist; vor dem Erstellen fragt das Programm nach, wenn eines davon fehlt. " +
+               "Abschalten: „Pflichtangaben“ in der Werkzeugleiste.");
         Absatz("Korrekturfortschritt", fett: true);
         Absatz("Ordner › Kennziffern eingeben… legt Kennziffern als Bereich („1001-1060“) oder Liste an; nicht vergebene lassen sich gleich mit angeben oder später in der Übersicht entfernen (Rechtsklick). " +
                "Das Programm misst die Bearbeitungszeit je Arbeit (Pausen über drei Minuten zählen nicht) und zeigt in der Übersicht Beginn, Ende, Dauer, den Median und eine Restzeitprognose.");

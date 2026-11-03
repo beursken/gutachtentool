@@ -626,11 +626,25 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
 
     public void Fokussieren(Eingabefeld feld)
     {
+        if (feld == Eingabefeld.Kriterien)
+        {
+            // Nach dem Aufklappen: Auswahl „Gliederung“ (sonst das erste Kriterium).
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                var felder = Unterlagenansicht.Nachfahren<ComboBox>(KriterienListe).ToList();
+                ComboBox? k = felder.FirstOrDefault(c => c.Header is string h && h.Contains("Gliederung", StringComparison.CurrentCultureIgnoreCase))
+                              ?? felder.FirstOrDefault();
+                k?.Focus(FocusState.Programmatic);
+                k?.StartBringIntoView();
+            });
+            return;
+        }
         Control ziel = feld switch
         {
             Eingabefeld.Klausur => Klausur,
             Eingabefeld.Matrikel => Matrikel,
             Eingabefeld.Note => Grade,
+            Eingabefeld.Seiten => Seiten,
             Eingabefeld.Editor => GutachtenReiter(),
             Eingabefeld.Suche => SucheSichtbar(),
             _ => Student,

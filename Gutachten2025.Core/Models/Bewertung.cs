@@ -22,6 +22,10 @@ public sealed partial class KriteriumAuswahl : ObservableObject
     [ObservableProperty]
     public partial int Index { get; set; }
 
+    /// <summary>Hervorheben, solange keine Angabe gewählt ist (Gliederung, siehe MainViewModel.Pruefung).</summary>
+    [ObservableProperty]
+    public partial bool Hervorgehoben { get; set; }
+
     public string? Wert => Index > 0 && Index < Optionen.Count ? Optionen[Index] : null;
 
     public void WertSetzen(string? wert)

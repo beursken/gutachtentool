@@ -47,6 +47,8 @@ public sealed partial class MainViewModel : ObservableObject
         UnterlagenEntwurf = string.Empty;
         UnterlagenWoerter = Array.Empty<string>();
         NormenSuchtext = string.Empty;
+        KennungHinweis = string.Empty;
+        AngabenHervorheben = true;
     }
 
     // ---------- Bindbare Daten ----------
@@ -91,10 +93,12 @@ public sealed partial class MainViewModel : ObservableObject
     partial void OnSeitenChanged(double value)
     {
         if (double.IsNaN(value) || value < 0) Seiten = 0;
+        OnPropertyChanged(nameof(SeitenOffen));
     }
 
     partial void OnNotenIndexChanged(int value)
     {
+        if (!_noteAutomatisch) NoteGesetzt = true;
         PassendAktualisieren();
         NoteGeaendert(value);
     }
@@ -108,6 +112,8 @@ public sealed partial class MainViewModel : ObservableObject
             ErstnoteAktualisieren();
             Aktivitaet();
         }
+        if (e.PropertyName is nameof(Student) or nameof(Matrikel) or nameof(Anonym) or nameof(BearbeiteteKennung) or nameof(KlausurName))
+            KennungPruefen();
     }
 
     // ---------- Darstellung (von der View gelesen und geschrieben) ----------
@@ -227,6 +233,7 @@ public sealed partial class MainViewModel : ObservableObject
             Matrikel = _einstellungen.Matrikel;
             NotenIndex = Notenskala.IstGueltig(_einstellungen.Note) ? _einstellungen.Note : Notenskala.Vorgabe;
             Seiten = Math.Max(0, _einstellungen.Seiten);
+            AngabenHervorheben = _einstellungen.AngabenHervorheben;
             SeitenleisteOffen = _einstellungen.SeitenleisteOffen;
             WordOeffnen = _einstellungen.WordOeffnen;
             BausteineOffen = _einstellungen.BausteineOffen;
@@ -247,6 +254,7 @@ public sealed partial class MainViewModel : ObservableObject
                 NotenIndex = note;
             }
 
+            NoteGesetzt = _einstellungen.NoteGesetzt ?? NotenIndex != Notenskala.Vorgabe;
             string? rtf = _speicher.EntwurfLaden();
             if (rtf is not null) _editor.RtfSetzen(rtf);
             else if (!string.IsNullOrEmpty(alterEntwurf)) _editor.TextSetzen(alterEntwurf);
@@ -267,6 +275,7 @@ public sealed partial class MainViewModel : ObservableObject
             _arbeitSekunden = _einstellungen.ArbeitSekunden;
             _letzteAktivitaet = DateTime.Now;
             _initialisiert = true;
+            KennungPruefen();
             _einstellungenGeaendert = _entwurfGeaendert = false;
         }
         _ = AktualisierungPruefenAsync();
@@ -384,6 +393,8 @@ public sealed partial class MainViewModel : ObservableObject
                 _ui.Fokussieren(Eingabefeld.Student);
                 return;
             }
+
+            if (!await AngabenVollstaendigAsync()) return;
 
             if (Erstnote is int erst && ErstnoteAbweichend &&
                 !await _ui.BestaetigenAsync("Abweichung vom Erstgutachten",
@@ -529,7 +540,7 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (KriteriumAuswahl k in Kriterien) k.Index = 0;
         foreach (AufgabenPunkte a in Aufgaben) a.Punkte = double.NaN;
         RohpunkteLeeren();
-        NotenIndex = Notenskala.Vorgabe;
+        NoteVorgeben(Notenskala.Vorgabe);
         BearbeiteteKennung = string.Empty;
         _editor.Leeren();
         _speicher.EntwurfLoeschen();
@@ -579,6 +590,7 @@ public sealed partial class MainViewModel : ObservableObject
         NotenIndex = Notenskala.IstGueltig(e.Note) ? e.Note : Notenskala.Vorgabe;
         Seiten = Math.Max(0, e.Seiten);
         AuswahlWiederherstellen(e.Kriterien, e.Teilpunkte, alleZuruecksetzen: true);
+        NoteGesetzt = true; // Note eines vorhandenen Gutachtens gilt als gewählt
         if (string.IsNullOrEmpty(e.Rtf)) _editor.Leeren();
         else _editor.RtfSetzen(e.Rtf);
         BearbeiteteKennung = alsUeberarbeitung ? e.Kennung : string.Empty;
@@ -746,6 +758,8 @@ public sealed partial class MainViewModel : ObservableObject
         _einstellungen.Leiste = (int)Leiste;
         _einstellungen.KriterienAufgeklappt = KriterienAufgeklappt;
         _einstellungen.Satzvorschlaege = Satzvorschlaege;
+        _einstellungen.AngabenHervorheben = AngabenHervorheben;
+        _einstellungen.NoteGesetzt = NoteGesetzt;
         _speicher.Speichern(_einstellungen);
         _einstellungenGeaendert = false;
     }

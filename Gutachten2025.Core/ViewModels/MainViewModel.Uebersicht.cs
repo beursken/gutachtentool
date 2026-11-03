@@ -53,6 +53,18 @@ public sealed partial class MainViewModel
     [RelayCommand]
     public void UebersichtAktualisieren()
     {
+        try
+        {
+            UebersichtAufbauen();
+        }
+        finally
+        {
+            KennungPruefen(); // Hinweis „bereits begutachtet“ auf dem neuen Stand
+        }
+    }
+
+    void UebersichtAufbauen()
+    {
         OnPropertyChanged(nameof(TeilnehmendeHinweis));
         if (KlausurName.Length == 0)
         {

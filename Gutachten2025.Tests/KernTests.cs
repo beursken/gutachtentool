@@ -297,6 +297,7 @@ public class NormenTests
     public void MehrereParagraphenMitEinemGesetz()
     {
         var v = Normverweise.Finden("Anspruch aus §§ 280 Abs. 1, 281 BGB.");
+        Assert.All(v, x => Assert.False(x.Start + x.Laenge > 35, "Der Satzpunkt gehört nicht zum Zitat."));
         Assert.Equal(2, v.Count);
         Assert.All(v, x => Assert.Equal("BGB", x.Gesetz));
         Assert.Equal(new[] { "§ 280", "§ 281" }, v.Select(x => x.Nr).ToArray());
@@ -417,7 +418,7 @@ public class NormstelleTests
         Assert.Equal("(1) Einmal.\n(2) Zweimal.", n[0].Text);
         Assert.Equal("Art 3a", n[1].Nr);
         Assert.Equal("Frist", n[1].Titel);
-        Assert.Empty(EigeneNormen.AusMarkdown(EigeneNormen.Vorlage).Where(x => x.Gesetz != "PrüfO"));
+        Assert.DoesNotContain(EigeneNormen.AusMarkdown(EigeneNormen.Vorlage), x => x.Gesetz != "PrüfO");
     }
 
     [Fact]

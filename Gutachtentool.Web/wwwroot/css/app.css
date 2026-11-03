@@ -314,6 +314,10 @@ input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid va
 /* Zweitgutachten: Erstnote zur Kennziffer */
 .hinweiszeile.erstnote { color: var(--text-leise); }
 .hinweiszeile.erstnote.abweichend { color: var(--warn); font-weight: 600; }
+.hinweiszeile.warnung { color: var(--warn); font-weight: 600; }
+/* Pflichtangaben ohne Eingabe: hervorheben, bis etwas gewählt ist */
+.feldgruppe.offen input, .feldgruppe.offen select { border-color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 25%, transparent); }
+.feldgruppe.offen label { color: var(--warn); }
 
 /* Kürzel-Vorschau im Editor */
 .kuerzelvorschau {

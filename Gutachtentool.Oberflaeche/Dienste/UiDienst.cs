@@ -331,6 +331,8 @@ public sealed class UiDienst : IUiService
             Eingabefeld.Matrikel => "f-matrikel",
             Eingabefeld.Note => "f-note",
             Eingabefeld.Suche => "f-suche",
+            Eingabefeld.Seiten => "f-seiten",
+            Eingabefeld.Kriterien => "f-kriterien",
             _ => EntwurfEditor.ElementId,
         };
         _ = FokusAsync(id);

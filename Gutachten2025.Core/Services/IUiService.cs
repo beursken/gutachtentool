@@ -6,7 +6,7 @@ namespace Gutachten2025.Services;
 
 public enum Meldungsart { Information, Erfolg, Warnung, Fehler }
 
-public enum Eingabefeld { Klausur, Student, Matrikel, Note, Editor, Suche }
+public enum Eingabefeld { Klausur, Student, Matrikel, Note, Editor, Suche, Seiten, Kriterien }
 
 /// <summary>Dialoge, Meldungen und Shell-Aufrufe; implementiert von der View.</summary>
 public interface IUiService
