@@ -183,6 +183,9 @@
                                             <MenuFlyoutItem Text="Sachverhalt und Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Beides">
                                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;"/></MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Normen" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Normen">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE82D;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
@@ -305,9 +308,38 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <Grid Grid.Row="1" ColumnSpacing="6" Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}">
+                            <!-- Normen: Zitat („§ 433 BGB“) oder Suchbegriff -->
+                            <Grid Grid.Row="1" ColumnSpacing="4" Visibility="{x:Bind ViewModel.ZeigtNormen, Mode=OneWay}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Padding="6,4" Command="{x:Bind ViewModel.NormenZurueckCommand}" ToolTipService.ToolTip="Zurück (Alt+Pfeil links)">
+                                    <FontIcon FontSize="16" Glyph="&#xE72B;"/>
+                                </Button>
+                                <Button Grid.Column="1" Padding="6,4" Command="{x:Bind ViewModel.NormenVorCommand}" ToolTipService.ToolTip="Vor (Alt+Pfeil rechts)">
+                                    <FontIcon FontSize="16" Glyph="&#xE72A;"/>
+                                </Button>
+                                <TextBox Grid.Column="2" PlaceholderText="„§ 433 Abs. 2 BGB“, „GmbHG“ oder Suchbegriff" KeyDown="NormenSuche_KeyDown"
+                                         Text="{x:Bind ViewModel.NormenSuchtext, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTipService.ToolTip="Zitat: Norm mit hervorgehobener Stelle · Kürzel: Gesetz durchblättern · sonst Volltextsuche (Bundesrecht: gesetze-im-internet.de, EU-Recht: EUR-Lex, sonst kvasir)"/>
+                                <Button Grid.Column="3" Padding="6,4" Command="{x:Bind ViewModel.NormenSuchenCommand}" ToolTipService.ToolTip="Suchen (Eingabe)">
+                                    <FontIcon FontSize="16" Glyph="&#xE721;"/>
+                                </Button>
+                                <Button Grid.Column="4" Padding="6,4" Command="{x:Bind ViewModel.NormenVerzeichnisCommand}"
+                                        ToolTipService.ToolTip="Verzeichnis der Normensammlung">
+                                    <FontIcon FontSize="16" Glyph="&#xE8FD;"/>
+                                </Button>
+                                <ProgressRing Grid.Column="5" Width="18" Height="18" IsActive="{x:Bind ViewModel.NormenBeschaeftigt, Mode=OneWay}"/>
+                            </Grid>
+                            <Grid Grid.Row="2" ColumnSpacing="6" Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -339,6 +371,9 @@
                                             </MenuFlyoutItem>
                                             <MenuFlyoutItem Text="Sachverhalt und Lösung" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Beides">
                                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Normen" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Normen">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE82D;"/></MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </DropDownButton.Flyout>
@@ -377,14 +412,14 @@
                                 </StackPanel>
                             </Grid>
 
-                            <ScrollViewer x:Name="UnterlagenScroller" Grid.Row="2" Padding="0,0,8,0"
+                            <ScrollViewer x:Name="UnterlagenScroller" Grid.Row="3" Padding="0,0,8,0"
                                           HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto" ZoomMode="Enabled" MinZoomFactor="0.6" MaxZoomFactor="2.5"
                                           Visibility="{x:Bind ViewModel.UnterlageAnzeigen, Mode=OneWay}">
                                 <StackPanel x:Name="UnterlagenInhalt" Padding="2,0,0,16"/>
                             </ScrollViewer>
 
-                            <Grid Grid.Row="2" RowSpacing="4" Visibility="{x:Bind ViewModel.UnterlageInBearbeitung, Mode=OneWay}">
+                            <Grid Grid.Row="3" RowSpacing="4" Visibility="{x:Bind ViewModel.UnterlageInBearbeitung, Mode=OneWay}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
@@ -397,7 +432,7 @@
                                            Text="Markdown: # Überschrift · **fett** · *kursiv* · - Aufzählung · 1. Nummer · Leerzeile = neuer Absatz"/>
                             </Grid>
 
-                            <StackPanel Grid.Row="2" Spacing="8" Margin="4,16" VerticalAlignment="Top"
+                            <StackPanel Grid.Row="3" Spacing="8" Margin="4,16" VerticalAlignment="Top"
                                         Visibility="{x:Bind ViewModel.UnterlageLeerSichtbar, Mode=OneWay}">
                                 <TextBlock TextWrapping="Wrap" Opacity="0.75" Text="{x:Bind ViewModel.UnterlageLeerHinweis, Mode=OneWay}"/>
                                 <Button Content="Text eingeben…" Command="{x:Bind ViewModel.UnterlageBearbeitenCommand}"
@@ -703,6 +738,12 @@
                                 <Canvas x:Name="VorschlagEbene" IsHitTestVisible="False">
                                     <Border x:Name="VorschlagRahmen" Visibility="Collapsed" CornerRadius="4">
                                         <TextBlock x:Name="VorschlagText" TextWrapping="Wrap" Opacity="0.55"/>
+                                    </Border>
+                                    <!-- Normtext beim Überfahren eines Zitats -->
+                                    <Border x:Name="NormHinweisRahmen" Visibility="Collapsed" CornerRadius="6" Padding="10,8" BorderThickness="1"
+                                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                        <TextBlock x:Name="NormHinweisText" TextWrapping="Wrap" Style="{StaticResource CaptionTextBlockStyle}"/>
                                     </Border>
                                 </Canvas>
                                 <!-- Leerer Zustand: keine Klausur -->

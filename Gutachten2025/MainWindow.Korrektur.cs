@@ -1,6 +1,7 @@
 using Gutachten2025.Models;
 using Gutachten2025.Rohpunkte;
 using Gutachten2025.Services;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -108,7 +109,107 @@ public sealed partial class MainWindow
         UeberschriftGewaehlt: UeberschriftGewaehlt,
         AlsBaustein: text => _ = AlsBausteinAsync(text),
         AuswahlGeaendert: text => _unterlagenAuswahl = text,
-        Sprungziel: ViewModel.HatSchema);
+        Sprungziel: ViewModel.HatSchema && !ViewModel.ZeigtNormen,
+        NormGewaehlt: (gesetz, nr) => _ = ViewModel.NormZeigenAsync(gesetz, nr));
+
+    // ---------- Normen und Gliederung im Editor ----------
+
+    readonly DispatcherTimer _normTakt = new() { Interval = TimeSpan.FromMilliseconds(450) };
+    Windows.Foundation.Point _normZeiger;
+
+    void NormenEinrichten()
+    {
+        Main.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(Main_NormZeiger), true);
+        Main.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(Main_StrgKlick), true);
+        Main.PointerExited += (_, _) => NormHinweisVerbergen();
+        _normTakt.Tick += (_, _) =>
+        {
+            _normTakt.Stop();
+            NormHinweisZeigen();
+        };
+        ViewModel.NormAnspringen += (zitat, nurUeberschrift) => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            Unterlagenansicht.NormFinden(UnterlagenInhalt, zitat, nurUeberschrift)?
+                .StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0.08, AnimationDesired = false }));
+        ViewModel.UeberschriftAnspringen += begriff => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (Unterlagenansicht.UeberschriftFinden(UnterlagenInhalt, begriff) is { } ziel)
+                ziel.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0.1, AnimationDesired = true });
+            else
+                Melden(Meldungsart.Information, "Nicht in der Lösung gefunden", $"„{begriff}“ kommt in der Lösung nicht vor.");
+        });
+    }
+
+    /// <summary>Text um eine Bildschirmstelle des Editors und die Stelle darin.</summary>
+    (string Text, int Stelle)? EditorTextAn(Windows.Foundation.Point punkt)
+    {
+        try
+        {
+            ITextRange r = Main.Document.GetRangeFromPoint(punkt, PointOptions.ClientCoordinates);
+            int pos = r.StartPosition;
+            int von = Math.Max(0, pos - 160);
+            Main.Document.GetRange(von, pos + 160).GetText(TextGetOptions.None, out string text);
+            return (text, pos - von);
+        }
+        catch (Exception)
+        {
+            return null; // außerhalb des Textes
+        }
+    }
+
+    void Main_NormZeiger(object sender, PointerRoutedEventArgs e)
+    {
+        _normZeiger = e.GetCurrentPoint(Main).Position;
+        if (NormHinweisRahmen.Visibility == Visibility.Visible) NormHinweisVerbergen();
+        _normTakt.Stop();
+        _normTakt.Start();
+    }
+
+    void NormHinweisZeigen()
+    {
+        if (EditorTextAn(_normZeiger) is not { } t || ViewModel.NormHinweisAn(t.Text, t.Stelle) is not { } hinweis)
+        {
+            NormHinweisVerbergen();
+            return;
+        }
+        NormHinweisText.Text = hinweis + "\n\nStrg+Klick: Volltext in der Seitenleiste";
+        Windows.Foundation.Point p = Main.TransformToVisual(VorschlagEbene).TransformPoint(_normZeiger);
+        double breite = Math.Max(240, Math.Min(520, VorschlagEbene.ActualWidth - 24));
+        NormHinweisRahmen.MaxWidth = breite;
+        Canvas.SetLeft(NormHinweisRahmen, Math.Clamp(p.X + 12, 8, Math.Max(8, VorschlagEbene.ActualWidth - breite - 8)));
+        Canvas.SetTop(NormHinweisRahmen, p.Y + 20);
+        NormHinweisRahmen.Visibility = Visibility.Visible;
+    }
+
+    void NormHinweisVerbergen()
+    {
+        _normTakt.Stop();
+        NormHinweisRahmen.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Strg+Klick im Editor: auf einem Zitat den Normtext, auf „Frage 1“ usw. die Stelle der Lösung zeigen.</summary>
+    void Main_StrgKlick(object sender, PointerRoutedEventArgs e)
+    {
+        if (!Gedrueckt(VirtualKey.Control) || EditorTextAn(e.GetCurrentPoint(Main).Position) is not { } t) return;
+        if (ViewModel.GliederungsbegriffAn(t.Text, t.Stelle) is { } begriff)
+        {
+            e.Handled = true;
+            NormHinweisVerbergen();
+            ViewModel.GliederungZeigen(begriff);
+        }
+        else if (ViewModel.NormVerweisAn(t.Text, t.Stelle) is { } v)
+        {
+            e.Handled = true;
+            NormHinweisVerbergen();
+            _ = ViewModel.NormZeigenAsync(v);
+        }
+    }
+
+    void NormenSuche_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Enter) return;
+        e.Handled = true;
+        if (ViewModel.NormenSuchenCommand.CanExecute(null)) ViewModel.NormenSuchenCommand.Execute(null);
+    }
 
     void UeberschriftGewaehlt(string ueberschrift)
     {

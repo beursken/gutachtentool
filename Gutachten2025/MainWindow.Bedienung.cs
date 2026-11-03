@@ -49,6 +49,14 @@ public sealed partial class MainWindow
     async void Wurzel_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         bool strg = Gedrueckt(VirtualKey.Control), alt = Gedrueckt(VirtualKey.Menu), umschalt = Gedrueckt(VirtualKey.Shift);
+        // Alt+Pfeil: Verlauf der Normenansicht (nur wenn die Leiste Normen zeigt).
+        if (alt && ViewModel.ZeigtNormen && ViewModel.UnterlagenSichtbar && e.Key is VirtualKey.Left or VirtualKey.Right)
+        {
+            e.Handled = true;
+            if (e.Key == VirtualKey.Left) ViewModel.NormenZurueckCommand.Execute(null);
+            else ViewModel.NormenVorCommand.Execute(null);
+            return;
+        }
         if (alt) return;
         switch (e.Key)
         {
@@ -908,6 +916,8 @@ public sealed partial class MainWindow
         ("F11", "Vollbild ein/aus (Esc im Editor verlässt das Vollbild)"),
         ("F6", "Bausteinliste ein-/ausblenden (bei schmalem Fenster überlagernd)"),
         ("F7", "Sachverhalt bzw. Lösung in der linken Leiste ein-/ausblenden"),
+        ("Strg+Klick im Text", "Auf einem Normzitat: Volltext in der Seitenleiste · auf „Frage 1“, „Tatkomplex 2“ …: Stelle in der Lösung"),
+        ("Alt+Pfeil links/rechts", "Normenansicht: zurück bzw. vor"),
         ("Eingabe (Rohpunkte)", "Punkte übernehmen und zur nächsten Station springen (Umschalt+Eingabe: zurück)"),
         ("F9", "Übersicht (Seitenleiste) ein-/ausblenden"),
         ("Strg+Umschalt+F", "Fokusmodus: nur der Editor (Esc beendet)"),
@@ -954,6 +964,11 @@ public sealed partial class MainWindow
         Absatz("Seitenleiste Sachverhalt/Lösung", fett: true);
         Absatz("Das Suchfeld hebt Fundstellen hervor (Eingabe: nächste, Umschalt+Eingabe: vorige). Markierter Text lässt sich per Rechtsklick oder Schaltfläche als Baustein speichern. " +
                "Ein Klick auf eine Überschrift der Lösung springt zur passenden Zeile im Reiter „Rohpunkte“. Wörter aus Sachverhalt und Lösung (etwa Namen) streicht die Rechtschreibprüfung nicht an.");
+        Absatz("Normen", fett: true);
+        Absatz("Die Seitenleiste „Normen“ zeigt die Normensammlung des Pakets und sucht nach Zitaten („§ 433 Abs. 2 BGB“, „Art. 6 Abs. 1 lit. f DSGVO“), Gesetzen („GmbHG“) oder Begriffen. " +
+               "Fehlende Bundesgesetze lädt das Programm von gesetze-im-internet.de, EU-Rechtsakte von EUR-Lex (jeweils ganz, zum Durchblättern), übrige Normen wie Landesrecht einzeln über kvasir; alles bleibt für alle Klausuren gespeichert. " +
+               "Zitate in Sachverhalt, Lösung und im eigenen Text zeigen beim Überfahren mit der Maus den zitierten Absatz, Satz, die Nummer oder den Buchstaben; Klick (in der Leiste) bzw. Strg+Klick (im Text) öffnet die Norm im Gesetz und hebt die Stelle hervor. " +
+               "„▲/▼“ blendet weitere Vorschriften ein, Zurück/Vor (Alt+Pfeil) führt durch den Verlauf. Über „Bearbeiten“ lassen sich eigene Normen (z. B. Prüfungsordnung) als Markdown ergänzen; sie gehören zur Klausur und reisen im Paket mit.");
         Absatz("Korrekturfortschritt", fett: true);
         Absatz("Ordner › Kennziffern eingeben… legt Kennziffern als Bereich („1001-1060“) oder Liste an; nicht vergebene lassen sich gleich mit angeben oder später in der Übersicht entfernen (Rechtsklick). " +
                "Das Programm misst die Bearbeitungszeit je Arbeit (Pausen über drei Minuten zählen nicht) und zeigt in der Übersicht Beginn, Ende, Dauer, den Median und eine Restzeitprognose.");

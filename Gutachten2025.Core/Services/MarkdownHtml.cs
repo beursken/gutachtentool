@@ -486,6 +486,18 @@ public static class MarkdownHtml
         || ziel.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
         || ziel.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Text so maskieren, dass Markdown ihn wörtlich wiedergibt (Zeichen für Formatierung, Verweise, HTML).</summary>
+    public static string Maskieren(string text)
+    {
+        var sb = new StringBuilder(text.Length + 8);
+        foreach (char c in text)
+        {
+            if (c is '\\' or '*' or '_' or '`' or '[' or ']' or '<' or '~' or '|' or '#') sb.Append('\\');
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
     /// <summary>Nur die für HTML nötigen Zeichen (Umlaute und § bleiben lesbar).</summary>
     static string Esc(string s)
     {

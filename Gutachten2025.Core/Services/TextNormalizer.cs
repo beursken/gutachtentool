@@ -147,6 +147,10 @@ public static class TextNormalizer
         @"(?<![\p{L}\d])(?:Tatkomplex|Fallfrage|Frage|Aufgabe)\s+(?:\d{1,3}[a-z]?|[IVX]{1,5})(?![\p{L}\d])",
         RegexOptions.CultureInvariant);
 
+    /// <summary>Gliederungsbegriff („Frage 1“, „Tatkomplex II“ …) an einer Textstelle; null = keiner.</summary>
+    public static string? GliederungsbegriffAn(string text, int stelle) =>
+        Gliederungsbegriff.Matches(text).FirstOrDefault(m => stelle >= m.Index && stelle <= m.Index + m.Length)?.Value;
+
     /// <summary>Setzt „Frage 1“, „Aufgabe 2“, „Tatkomplex 3“, „Fallfrage 4“ (auch „Frage 2a“, „Tatkomplex II“) fett.</summary>
     public static List<List<TextLauf>> GliederungFett(List<List<TextLauf>> absaetze)
     {

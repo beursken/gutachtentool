@@ -334,3 +334,14 @@ input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid va
 .eintraege .zusatz { display: block; color: var(--text-leise); font-size: 11.5px; }
 .eintraege .entfernen { border: 0; background: none; color: var(--text-leise); cursor: pointer; padding: 0 4px; }
 .eintraege .entfernen:hover { color: var(--fehler); }
+
+/* Normen: Zitate in Sachverhalt/Lösung, Hinweis im Editor, Gliederungsnavigation */
+.unterlage .norm { color: var(--akzent); border-bottom: 1px dotted var(--akzent); cursor: pointer; }
+.unterlage .norm:hover { background: var(--akzent-hell); }
+.unterlage mark.hervor { background: rgba(255, 193, 7, .35); color: inherit; border-radius: 2px; padding: 0 1px; }
+.normhinweis {
+    position: fixed; z-index: 45; max-width: 480px; max-height: 50vh; overflow: auto; padding: 8px 10px; white-space: pre-wrap;
+    border: 1px solid var(--linie); border-radius: 6px; background: var(--flaeche); color: var(--text); box-shadow: var(--schatten);
+    font: 12.5px/1.45 var(--schrift); pointer-events: none;
+}
+.unterlage .angesprungen { background: #ffe08a; transition: background 1.5s; }

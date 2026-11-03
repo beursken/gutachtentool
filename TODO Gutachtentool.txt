@@ -1,0 +1,6 @@
+- Gesetzestab: Primär Gesetzessammlung, sekundär Lookup
+- Verlinkung von Gesetzen im Text, im Gutachten
+- Klausur im linken Tab
+- Warnung, wenn Klausur schon vorhanden
+- Doppelgroßbuchstaben bei längeren Worten automatisch korrigieren
+- Scrollen in der rechten Seitenleiste

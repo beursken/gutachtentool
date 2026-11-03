@@ -112,6 +112,18 @@
                     }
                 </div>
             }
+            @if (_vm is not null && _vm.ZeigtNormen)
+            {
+                <div class="leiste">
+                    <button class="knopf leise" @onclick="() => _vm.NormenZurueckCommand.Execute(null)" disabled="@(!_vm.KannNormenZurueck)" title="Zurück">◀</button>
+                    <button class="knopf leise" @onclick="() => _vm.NormenVorCommand.Execute(null)" disabled="@(!_vm.KannNormenVor)" title="Vor">▶</button>
+                    <input type="search" placeholder="„§ 433 Abs. 2 BGB“, „GmbHG“ oder Suchbegriff" value="@_vm.NormenSuchtext"
+                           @oninput="e => _vm.NormenSuchtext = e.Value as string ?? string.Empty" @onkeydown="NormenSucheTasteAsync"
+                           title="Zitat: Norm mit hervorgehobener Stelle · Kürzel: Gesetz durchblättern · sonst Volltextsuche" />
+                    <button class="knopf leise" @onclick="() => Los(_vm.NormenSuchenCommand)" disabled="@_vm.NormenBeschaeftigt">Suchen</button>
+                    <button class="knopf leise" @onclick="() => Los(_vm.NormenVerzeichnisCommand)" title="Verzeichnis der Normensammlung">☰</button>
+                </div>
+            }
             @if (_vm is not null && _vm.ZeigtUnterlagen)
             {
                 <div class="leiste klein">
@@ -384,6 +396,8 @@
             }
             _vm = new MainViewModel(Ui, Editor);
             _vm.PropertyChanged += VmGeaendert;
+            _vm.UeberschriftAnspringen += UeberschriftAnspringen;
+            _vm.NormAnspringen += NormAnspringen;
             Editor.Geaendert = _vm.EntwurfGeaendert;
             Editor.AnderesZiel = InAnmerkungEinfuegen;
             _phase = 1;
@@ -491,8 +505,75 @@
     static readonly (Leistenanzeige Art, string Text)[] Leisten =
     {
         (Leistenanzeige.Bausteine, "Bausteine"), (Leistenanzeige.Sachverhalt, "Sachverhalt"),
-        (Leistenanzeige.Loesung, "Lösung"), (Leistenanzeige.Beides, "Beides"),
+        (Leistenanzeige.Loesung, "Lösung"), (Leistenanzeige.Beides, "Beides"), (Leistenanzeige.Normen, "Normen"),
     };
+
+    // ---------- Normen und Gliederung ----------
+
+    [JSInvokable]
+    public async Task NormGewaehlt(string gesetz, string nr)
+    {
+        if (_vm is null) return;
+        await _vm.NormZeigenAsync(gesetz, nr);
+        await Nachlauf();
+    }
+
+    /// <summary>Mauszeiger im Editor: Normtext zum Zitat an der Stelle (null = keines).</summary>
+    [JSInvokable]
+    public string? NormHinweisAn(string text, int stelle) => _vm?.NormHinweisAn(text, stelle);
+
+    /// <summary>Strg+Klick im Editor: Normzitat oder Gliederungsbegriff; true = behandelt.</summary>
+    [JSInvokable]
+    public async Task<bool> EditorStrgKlick(string text, int stelle)
+    {
+        if (_vm is null) return false;
+        if (_vm.GliederungsbegriffAn(text, stelle) is { } begriff)
+        {
+            _vm.GliederungZeigen(begriff);
+            return true;
+        }
+        if (_vm.NormVerweisAn(text, stelle) is { } v)
+        {
+            await _vm.NormZeigenAsync(v);
+            await Nachlauf();
+            return true;
+        }
+        return false;
+    }
+
+    async void UeberschriftAnspringen(string begriff)
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(50); // neu gezeichnete Leiste abwarten
+            bool gefunden = await Js.InvokeAsync<bool>("gutachtentool.unterlage.ueberschriftZeigen", begriff);
+            if (!gefunden) Ui.Melden(Meldungsart.Information, "Nicht in der Lösung gefunden", $"„{begriff}“ kommt in der Lösung nicht vor.");
+        }
+        catch (JSException ex)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
+    }
+
+    async void NormAnspringen(string zitat, bool nurUeberschrift)
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(50); // neu gezeichnete Leiste abwarten
+            await Js.InvokeVoidAsync("gutachtentool.unterlage.normZeigen", zitat, nurUeberschrift);
+        }
+        catch (JSException ex)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
+    }
+
+    async Task NormenSucheTasteAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && _vm is not null) await Los(_vm.NormenSuchenCommand);
+    }
 
     [JSInvokable]
     public async Task JetztSichern()
@@ -655,7 +736,12 @@
     {
         _takt?.Dispose();
         Ui.Geaendert -= Neuzeichnen;
-        if (_vm is not null) _vm.PropertyChanged -= VmGeaendert;
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= VmGeaendert;
+            _vm.UeberschriftAnspringen -= UeberschriftAnspringen;
+            _vm.NormAnspringen -= NormAnspringen;
+        }
         _editorRef?.Dispose();
         _seitenRef?.Dispose();
         await Task.CompletedTask;

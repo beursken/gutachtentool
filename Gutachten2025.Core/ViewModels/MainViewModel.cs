@@ -46,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject
         UnterlagenHtml = string.Empty;
         UnterlagenEntwurf = string.Empty;
         UnterlagenWoerter = Array.Empty<string>();
+        NormenSuchtext = string.Empty;
     }
 
     // ---------- Bindbare Daten ----------
@@ -328,6 +329,7 @@ public sealed partial class MainViewModel : ObservableObject
         TeilnehmendeLaden();
         ErstnotenLaden();
         BausteineLaden();
+        NormensammlungLaden();
         UnterlagenLaden();
         UebersichtAktualisieren();
     }

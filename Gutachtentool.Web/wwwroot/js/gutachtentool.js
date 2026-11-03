@@ -158,7 +158,25 @@ window.gutachtentool = (() => {
             document.addEventListener('selectionchange', () => cursorMerken(el));
             el.addEventListener('input', () => { melden(id); kuerzelHinweis(el); });
             el.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) kuerzelHinweis(el); });
-            el.addEventListener('blur', () => hinweisVerbergen());
+            el.addEventListener('blur', () => { hinweisVerbergen(); normHinweisVerbergen(); });
+            // Normzitate: Mauszeiger zeigt den Normtext; Strg+Klick öffnet ihn bzw. springt bei „Frage 1“ zur Lösung.
+            el.addEventListener('mousemove', e => {
+                normHinweisVerbergen();
+                clearTimeout(normTakt);
+                normTakt = setTimeout(async () => {
+                    const s = textAnPunkt(el, e.clientX, e.clientY);
+                    if (!s || !seite) return;
+                    const t = await seite.invokeMethodAsync('NormHinweisAn', s.text, s.stelle);
+                    if (t) normHinweisZeigen(t + '\n\nStrg+Klick: Volltext in der Seitenleiste', e.clientX, e.clientY);
+                }, 450);
+            });
+            el.addEventListener('mouseleave', () => { clearTimeout(normTakt); normHinweisVerbergen(); });
+            el.addEventListener('click', async e => {
+                if (!(e.ctrlKey || e.metaKey) || !seite) return;
+                const s = textAnPunkt(el, e.clientX, e.clientY);
+                if (!s) return;
+                if (await seite.invokeMethodAsync('EditorStrgKlick', s.text, s.stelle)) normHinweisVerbergen();
+            });
             el.addEventListener('paste', e => {
                 // Nur reiner Text: keine Formatierung aus Word oder Webseiten übernehmen.
                 e.preventDefault();
@@ -215,6 +233,44 @@ window.gutachtentool = (() => {
             document.execCommand(befehl);
         },
     };
+
+    // ---------- Normtext beim Überfahren (Editor) ----------
+    let seite = null, normTakt = 0, normHinweis = null;
+    function normHinweisVerbergen() { if (normHinweis) normHinweis.hidden = true; }
+    function normHinweisZeigen(text, x, y) {
+        if (!normHinweis) {
+            normHinweis = document.createElement('div');
+            normHinweis.className = 'normhinweis';
+            document.body.appendChild(normHinweis);
+        }
+        normHinweis.textContent = text;
+        normHinweis.style.left = Math.max(8, Math.min(x + 12, window.innerWidth - 500)) + 'px';
+        normHinweis.style.top = (y + 20) + 'px';
+        normHinweis.hidden = false;
+    }
+    /** Text um einen Bildschirmpunkt im Editor (je 160 Zeichen davor und danach) und die Stelle darin. */
+    function textAnPunkt(el, x, y) {
+        let knoten, versatz;
+        if (document.caretPositionFromPoint) {
+            const p = document.caretPositionFromPoint(x, y);
+            if (!p) return null;
+            knoten = p.offsetNode; versatz = p.offset;
+        } else if (document.caretRangeFromPoint) {
+            const r = document.caretRangeFromPoint(x, y);
+            if (!r) return null;
+            knoten = r.startContainer; versatz = r.startOffset;
+        } else return null;
+        if (!imEditor(el, knoten)) return null;
+        const vor = document.createRange();
+        vor.selectNodeContents(el);
+        vor.setEnd(knoten, versatz);
+        const nach = document.createRange();
+        nach.selectNodeContents(el);
+        nach.setStart(knoten, versatz);
+        const a = vor.toString(), b = nach.toString();
+        const davor = a.substring(Math.max(0, a.length - 160));
+        return { text: davor + b.substring(0, 160), stelle: davor.length };
+    }
 
     // Graue Vorschau, wenn vor der Schreibmarke ein Kürzel steht (Tab fügt den Baustein ein).
     let hinweis = null;
@@ -289,9 +345,39 @@ window.gutachtentool = (() => {
             if (!s || !s.rangeCount || !wurzel || !wurzel.contains(s.anchorNode)) return '';
             return s.toString().trim();
         },
-        /** Klick auf eine Überschrift → .NET (Sprung zur Rohpunktzeile). */
+        /** Gliederungsnavigation: Überschrift (ersatzweise Absatz) mit dem Begriff zeigen und kurz hervorheben. */
+        ueberschriftZeigen(begriff) {
+            const wurzel = document.querySelector('.unterlage');
+            if (!wurzel) return false;
+            const b = (begriff || '').toLowerCase();
+            const passt = el => el.textContent.toLowerCase().includes(b);
+            const ziel = [...wurzel.querySelectorAll('h1, h2, h3, h4, h5, h6')].find(passt)
+                || [...wurzel.querySelectorAll('p, li')].find(passt);
+            if (!ziel) return false;
+            ziel.scrollIntoView({ block: 'start' });
+            ziel.classList.add('angesprungen');
+            setTimeout(() => ziel.classList.remove('angesprungen'), 2000);
+            return true;
+        },
+        /** Gezeigte Norm in den Blick: hervorgehobene Stelle, sonst Überschrift, die mit dem Zitat beginnt. */
+        normZeigen(zitat, nurUeberschrift) {
+            const wurzel = document.querySelector('.unterlage');
+            if (!wurzel) return;
+            const text = el => el.textContent.replace(/\s+/g, ' ').trim();
+            const ziel = (!nurUeberschrift && wurzel.querySelector('mark.hervor'))
+                || [...wurzel.querySelectorAll('h3, h4')].find(h => text(h) === zitat || text(h).startsWith(zitat + ' '));
+            if (ziel) ziel.scrollIntoView({ block: nurUeberschrift ? 'start' : 'center' });
+        },
+        /** Klick auf eine Überschrift → .NET (Sprung zur Rohpunktzeile); Klick auf ein Normzitat → Volltext. */
         anmelden(ref) {
+            seite = ref;
             document.addEventListener('click', e => {
+                const norm = e.target instanceof Element ? e.target.closest('.unterlage .norm') : null;
+                if (norm) {
+                    e.preventDefault();
+                    ref.invokeMethodAsync('NormGewaehlt', norm.dataset.gesetz || '', norm.dataset.nr || '');
+                    return;
+                }
                 const h = e.target instanceof Element ? e.target.closest('.unterlage h1, .unterlage h2, .unterlage h3, .unterlage h4, .unterlage h5, .unterlage h6') : null;
                 if (!h || (document.getSelection() && !document.getSelection().isCollapsed)) return;
                 ref.invokeMethodAsync('UeberschriftGewaehlt', h.textContent.replace(/\s+/g, ' ').trim());

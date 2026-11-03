@@ -52,6 +52,8 @@ public sealed class PaketInhalt
         if (Dateien.TryGetValue(Erstnoten.Datei, out byte[]? erst)) teile.Add($"Erstnoten ({Erstnoten.AusBytes(erst).Count} Kennziffern)");
         if (Dateien.ContainsKey(KlausurAblage.Sachverhalt)) teile.Add("Sachverhalt");
         if (Dateien.ContainsKey(KlausurAblage.Loesung)) teile.Add("Lösung");
+        if (Dateien.TryGetValue(Normensammlung.Datei, out byte[]? normen)) teile.Add($"Normensammlung ({Normensammlung.AusBytes(normen).Count} Vorschriften)");
+        if (Dateien.ContainsKey(Normensammlung.EigeneDatei)) teile.Add("eigene Normen");
         if (Dateien.Keys.Any(k => k.StartsWith("Erwartungshorizont", StringComparison.OrdinalIgnoreCase))) teile.Add("Erwartungshorizont");
         return string.Join(", ", teile);
     }
@@ -75,7 +77,7 @@ public static class PaketService
     {
         KlausurAblage.Formulierungen, KlausurAblage.WordVorlage, KlausurAblage.Konfiguration,
         Rohpunkte.Rohpunkteschema.Dateiname, Rohpunkte.Rohpunkteschema.Exceldatei,
-        KlausurAblage.Sachverhalt, KlausurAblage.Loesung, Erstnoten.Datei,
+        KlausurAblage.Sachverhalt, KlausurAblage.Loesung, Erstnoten.Datei, Normensammlung.Datei, Normensammlung.EigeneDatei,
         "Erwartungshorizont.md", "Erwartungshorizont.txt", "Erwartungshorizont.docx", "Erwartungshorizont.pdf",
     };
 
@@ -168,6 +170,11 @@ public static class PaketService
             {
                 throw new PaketFehler($"Klausur.json im Paket ist ungültig: {ex.Message}");
             }
+        }
+        if (dateien.TryGetValue(Normensammlung.Datei, out byte[]? normen))
+        {
+            try { Normensammlung.AusBytes(normen); }
+            catch (InvalidDataException ex) { throw new PaketFehler(ex.Message, ex); }
         }
         if (dateien.TryGetValue(Erstnoten.Datei, out byte[]? erstnoten))
         {

@@ -23,7 +23,8 @@ static class Unterlagenansicht
     static readonly Regex Leerraum = new(@"\s+", RegexOptions.CultureInvariant);
 
     /// <summary>Rückrufe der Seitenleiste: Klick auf eine Überschrift, Markierung als Baustein, geänderte Markierung.</summary>
-    public sealed record Aktionen(Action<string> UeberschriftGewaehlt, Action<string> AlsBaustein, Action<string> AuswahlGeaendert, bool Sprungziel);
+    public sealed record Aktionen(Action<string> UeberschriftGewaehlt, Action<string> AlsBaustein, Action<string> AuswahlGeaendert, bool Sprungziel,
+        Action<string, string>? NormGewaehlt = null);
 
     /// <summary>Fundstelle der Suche.</summary>
     public sealed record Treffer(RichTextBlock Block, int Start, int Laenge);
@@ -33,6 +34,7 @@ static class Unterlagenansicht
     public static void Fuellen(StackPanel ziel, string html, double schrift, Aktionen? aktionen = null)
     {
         _aktionen = aktionen;
+        HervorLaeufe.Clear();
         ziel.Children.Clear();
         if (string.IsNullOrWhiteSpace(html)) return;
         XElement wurzel;
@@ -93,6 +95,7 @@ static class Unterlagenansicht
                 Inlines(e, p.Inlines, schrift);
                 RichTextBlock r = Absatz(ziel, p, schrift);
                 r.Margin = new Thickness(0, schrift * (ebene <= 2 ? 1.0 : 0.7), 0, schrift * 0.25);
+                r.Tag = Ueberschriftsmarke;
                 if (_aktionen is { Sprungziel: true } a)
                 {
                     string titel = Leerraum.Replace(e.Value, " ").Trim();
@@ -174,6 +177,7 @@ static class Unterlagenansicht
         };
         Trimmen(p.Inlines);
         r.Blocks.Add(p);
+        Hervorheben(r, p);
         Ausstatten(r);
         ziel.Children.Add(r);
         return r;
@@ -303,9 +307,31 @@ static class Unterlagenansicht
                         ziel.Add(d);
                         break;
                     }
+                    case "mark":
+                    {
+                        // Zitierte Stelle einer Norm: Hintergrund per TextHighlighter (siehe Hervorheben), Läufe tragen den Namen.
+                        var m = new Span();
+                        foreach (XNode k in e.Nodes()) Inline(k, m.Inlines, schrift);
+                        Benennen(m.Inlines);
+                        ziel.Add(m);
+                        break;
+                    }
                     case "code":
                         ziel.Add(new Run { Text = e.Value, FontFamily = new FontFamily("Consolas"), FontSize = schrift * 0.92 });
                         break;
+                    case "span" when (string?)e.Attribute("class") == "norm":
+                    {
+                        // Normzitat: Hinweis beim Überfahren (Text der Norm), Klick zeigt den Volltext in der Leiste.
+                        string gesetz = (string?)e.Attribute("data-gesetz") ?? string.Empty, nr = (string?)e.Attribute("data-nr") ?? string.Empty;
+                        var h = new Hyperlink { UnderlineStyle = UnderlineStyle.None };
+                        h.Inlines.Add(new Run { Text = Leerraum.Replace(e.Value, " ") });
+                        if ((string?)e.Attribute("title") is { Length: > 0 } hinweis)
+                            ToolTipService.SetToolTip(h, new TextBlock { Text = hinweis, TextWrapping = TextWrapping.Wrap, MaxWidth = 480 });
+                        Action<string, string>? wahl = _aktionen?.NormGewaehlt;
+                        if (wahl is not null) h.Click += (_, _) => wahl(gesetz, nr);
+                        ziel.Add(h);
+                        break;
+                    }
                     case "a" when Uri.TryCreate((string?)e.Attribute("href"), UriKind.Absolute, out Uri? ziel2)
                                   && ziel2.Scheme is "http" or "https" or "mailto":
                     {
@@ -350,6 +376,81 @@ static class Unterlagenansicht
         r.ContextFlyout = menue;
     }
 
+    const string Ueberschriftsmarke = "ueberschrift";
+    const string Hervormarke = "hervor";
+    static SolidColorBrush? _hervorFarbe;
+    static SolidColorBrush HervorFarbe => _hervorFarbe ??= new SolidColorBrush(Windows.UI.Color.FromArgb(0x70, 0xFF, 0xC1, 0x07));
+
+    /// <summary>Such- und Sprungmarkierungen entfernen; die Hervorhebung der zitierten Normstelle bleibt.</summary>
+    static void Leeren(RichTextBlock b)
+    {
+        for (int i = b.TextHighlighters.Count - 1; i >= 0; i--)
+            if (!ReferenceEquals(b.TextHighlighters[i].Background, _hervorFarbe)) b.TextHighlighters.RemoveAt(i);
+    }
+
+    /// <summary>Läufe innerhalb von &lt;mark&gt; (bis der Absatz fertig ist).</summary>
+    static readonly HashSet<Run> HervorLaeufe = new(ReferenceEqualityComparer.Instance);
+
+    static void Benennen(InlineCollection inlines)
+    {
+        foreach (Inline i in inlines)
+        {
+            if (i is Run r) HervorLaeufe.Add(r);
+            else if (i is Span s) Benennen(s.Inlines);
+        }
+    }
+
+    /// <summary>Hervorgehobene Läufe (zitierte Stelle) mit Hintergrund versehen; der Block wird als Sprungziel markiert.</summary>
+    static void Hervorheben(RichTextBlock r, Paragraph p)
+    {
+        var bereich = new TextHighlighter { Background = HervorFarbe };
+        int pos = 0;
+        void Gehe(IEnumerable<Inline> inlines)
+        {
+            foreach (Inline i in inlines)
+            {
+                switch (i)
+                {
+                    case Run run:
+                        if (HervorLaeufe.Remove(run) && run.Text.Length > 0) bereich.Ranges.Add(new TextRange { StartIndex = pos, Length = run.Text.Length });
+                        pos += run.Text.Length;
+                        break;
+                    case LineBreak: pos++; break;
+                    case Span sp: Gehe(sp.Inlines); break;
+                }
+            }
+        }
+        Gehe(p.Inlines);
+        if (bereich.Ranges.Count == 0) return;
+        r.TextHighlighters.Add(bereich);
+        if (r.Tag is null) r.Tag = Hervormarke;
+    }
+
+    /// <summary>Gezeigte Norm: zuerst die hervorgehobene Stelle, sonst die Überschrift, die mit dem Zitat beginnt; null = keine.</summary>
+    public static FrameworkElement? NormFinden(Panel wurzel, string zitat, bool nurUeberschrift)
+    {
+        List<RichTextBlock> bloecke = Nachfahren<RichTextBlock>(wurzel).ToList();
+        if (!nurUeberschrift && bloecke.FirstOrDefault(b => Hervormarke.Equals(b.Tag)) is { } hier) return hier;
+        return bloecke.FirstOrDefault(b => Ueberschriftsmarke.Equals(b.Tag) && Klartext(b) is var t
+                                           && (t == zitat || t.StartsWith(zitat + " ", StringComparison.Ordinal)));
+    }
+
+    /// <summary>Gliederungsnavigation: erste Überschrift (ersatzweise erster Absatz), die den Begriff enthält, hervorheben; null = keine.</summary>
+    public static RichTextBlock? UeberschriftFinden(Panel wurzel, string begriff)
+    {
+        List<RichTextBlock> bloecke = Nachfahren<RichTextBlock>(wurzel).ToList();
+        RichTextBlock? treffer = bloecke.FirstOrDefault(b => Ueberschriftsmarke.Equals(b.Tag) && Klartext(b).Contains(begriff, StringComparison.CurrentCultureIgnoreCase))
+                                 ?? bloecke.FirstOrDefault(b => Klartext(b).Contains(begriff, StringComparison.CurrentCultureIgnoreCase));
+        if (treffer is null) return null;
+        foreach (RichTextBlock b in bloecke) Leeren(b);
+        string text = Klartext(treffer);
+        int k = text.IndexOf(begriff, StringComparison.CurrentCultureIgnoreCase);
+        var hier = new TextHighlighter { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xFF, 0x9F, 0x1A)) };
+        hier.Ranges.Add(new TextRange { StartIndex = Math.Max(0, k), Length = begriff.Length });
+        treffer.TextHighlighters.Add(hier);
+        return treffer;
+    }
+
     // ---------- Suche ----------
 
     /// <summary>Alle Fundstellen (ohne Groß-/Kleinschreibung) in Reihenfolge der Anzeige; leerer Begriff löscht die Hervorhebung.</summary>
@@ -357,7 +458,7 @@ static class Unterlagenansicht
     {
         var treffer = new List<Treffer>();
         List<RichTextBlock> bloecke = Nachfahren<RichTextBlock>(wurzel).ToList();
-        foreach (RichTextBlock b in bloecke) b.TextHighlighters.Clear();
+        foreach (RichTextBlock b in bloecke) Leeren(b);
         string s = (begriff ?? string.Empty).Trim();
         if (s.Length < 2) return treffer;
         foreach (RichTextBlock b in bloecke)
@@ -379,7 +480,7 @@ static class Unterlagenansicht
         foreach (var gruppe in treffer.Select((t, i) => (t, i)).GroupBy(x => x.t.Block))
         {
             RichTextBlock b = gruppe.Key;
-            b.TextHighlighters.Clear();
+            Leeren(b);
             var alle = new TextHighlighter { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x66, 0xFF, 0xD5, 0x4F)) };
             foreach (var (t, i) in gruppe)
                 if (i != aktuell) alle.Ranges.Add(new TextRange { StartIndex = t.Start, Length = t.Laenge });

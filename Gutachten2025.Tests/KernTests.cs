@@ -290,3 +290,166 @@ public sealed class PaketTests : IDisposable
         s.Write(b, 0, b.Length);
     }
 }
+
+public class NormenTests
+{
+    [Fact]
+    public void MehrereParagraphenMitEinemGesetz()
+    {
+        var v = Normverweise.Finden("Anspruch aus §§ 280 Abs. 1, 281 BGB.");
+        Assert.Equal(2, v.Count);
+        Assert.All(v, x => Assert.Equal("BGB", x.Gesetz));
+        Assert.Equal(new[] { "§ 280", "§ 281" }, v.Select(x => x.Nr).ToArray());
+    }
+
+    [Theory]
+    [InlineData("Art. 6 Abs. 1 lit. f DSGVO", "DSGVO", "Art 6")]
+    [InlineData("nach § 823 I BGB", "BGB", "§ 823")]
+    [InlineData("§ 433 Abs. 2 BGB", "BGB", "§ 433")]
+    public void EinzelzitatWirdErkannt(string text, string gesetz, string nr)
+    {
+        var v = Assert.Single(Normverweise.Finden(text));
+        Assert.Equal(gesetz, v.Gesetz);
+        Assert.Equal(Normverweise.Schluessel(gesetz, nr), Normverweise.Schluessel(v.Gesetz, v.Nr));
+    }
+
+    [Fact]
+    public void OhneGesetzGiltDasZuletztGenannte()
+    {
+        var v = Normverweise.Finden("§ 433 BGB; ferner § 434.");
+        Assert.Equal(2, v.Count);
+        Assert.Equal("BGB", v[1].Gesetz);
+    }
+
+    [Fact]
+    public void AuszeichnungBleibtWohlgeformt()
+    {
+        string html = MarkdownHtml.Umwandeln("Prüfe **§ 280 BGB** und Art. 6 DSGVO & mehr.");
+        string aus = Normverweise.Auszeichnen(html, _ => "Hinweis <\"&>");
+        XElement x = XElement.Parse("<div>" + aus + "</div>");
+        Assert.Equal(2, x.Descendants("span").Count(e => (string?)e.Attribute("class") == "norm"));
+    }
+
+    [Fact]
+    public void GesetzesXmlWirdGelesen()
+    {
+        const string xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <dokumente>
+              <norm><metadaten><jurabk>BGB</jurabk></metadaten></norm>
+              <norm><metadaten><jurabk>BGB</jurabk><enbez>§ 433</enbez><titel>Vertragstypische Pflichten beim Kaufvertrag</titel></metadaten>
+                <textdaten><text><Content><P>(1) Durch den Kaufvertrag wird der Verkäufer verpflichtet.</P><P>(2) Der Käufer ist verpflichtet.</P></Content></text></textdaten></norm>
+            </dokumente>
+            """;
+        using var ms = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+        var n = Assert.Single(Gesetzesquelle.AusXml(ms, "BGB", "test"));
+        Assert.Equal("§ 433", n.Nr);
+        Assert.Contains("(2) Der Käufer", n.Text);
+        Assert.Equal("Vertragstypische Pflichten beim Kaufvertrag", n.Titel);
+    }
+}
+
+public class NormstelleTests
+{
+    static readonly Norm Kauf = new()
+    {
+        Gesetz = "BGB", Nr = "§ 433", Titel = "Vertragstypische Pflichten beim Kaufvertrag",
+        Text = "(1) Durch den Kaufvertrag wird der Verkäufer einer Sache verpflichtet, dem Käufer die Sache zu übergeben. Der Verkäufer hat dem Käufer die Sache frei von Sach- und Rechtsmängeln zu verschaffen.\n(2) Der Käufer ist verpflichtet, dem Verkäufer den vereinbarten Kaufpreis zu zahlen.",
+    };
+
+    static readonly Norm Dsgvo = new()
+    {
+        Gesetz = "DSGVO", Nr = "Art 6", Titel = "Rechtmäßigkeit der Verarbeitung",
+        Text = "(1) Die Verarbeitung ist nur rechtmäßig, wenn mindestens eine der nachstehenden Bedingungen erfüllt ist:\na) Einwilligung;\nb) Vertrag;\nf) berechtigte Interessen.\nUnterabsatz 1 Buchstabe f gilt nicht für Behörden.\n(2) Die Mitgliedstaaten können …",
+    };
+
+    [Fact]
+    public void TeilWirdErkannt()
+    {
+        NormVerweis v = Assert.Single(Normverweise.Finden("§ 433 Abs. 1 S. 2 BGB"));
+        Assert.Equal(new NormTeil("1", "2", null, null), v.Teil);
+        Assert.Equal(new NormTeil("1", null, null, "f"), Assert.Single(Normverweise.Finden("Art. 6 Abs. 1 lit. f DSGVO")).Teil);
+        Assert.Equal(new NormTeil("1", "1", null, null), Assert.Single(Normverweise.Finden("§ 812 I 1 BGB")).Teil);
+        Assert.Equal(new NormTeil("2", null, "3", null), Assert.Single(Normverweise.Finden("§ 573 Abs. 2 Nr. 3 BGB")).Teil);
+        Assert.Null(Assert.Single(Normverweise.Finden("§ 433 BGB")).Teil);
+    }
+
+    [Fact]
+    public void AngabeAusDerAnzeigeWirdZurueckgelesen()
+    {
+        NormVerweis v = Normverweise.AusAngabe("BGB", "§ 433|Abs. 1 S. 2");
+        Assert.Equal("§ 433", v.Nr);
+        Assert.Equal(new NormTeil("1", "2", null, null), v.Teil);
+    }
+
+    [Fact]
+    public void SatzWirdAusgeschnitten()
+    {
+        Assert.Equal("Der Verkäufer hat dem Käufer die Sache frei von Sach- und Rechtsmängeln zu verschaffen.",
+            Normstelle.Ausschnitt(Kauf, new NormTeil("1", "2", null, null)));
+        Assert.StartsWith("(2) Der Käufer", Normstelle.Ausschnitt(Kauf, new NormTeil("2", null, null, null)));
+        Assert.Equal("f) berechtigte Interessen.", Normstelle.Ausschnitt(Dsgvo, new NormTeil("1", null, null, "f")));
+        Assert.Null(Normstelle.Ausschnitt(Kauf, new NormTeil("5", null, null, null)));
+    }
+
+    [Fact]
+    public void AbkuerzungenBeendenKeinenSatz()
+    {
+        var s = Normstelle.Saetze("Dies gilt z. B. nach Abs. 2 entsprechend. § 434 bleibt unberührt.");
+        Assert.Equal(2, s.Count);
+    }
+
+    [Fact]
+    public void HervorhebungBleibtWohlgeformt()
+    {
+        string html = Normstelle.Hervorheben(MarkdownHtml.Umwandeln(Normensammlung.AlsMarkdown(Kauf, new NormTeil("1", "2", null, null))));
+        XElement x = XElement.Parse("<div>" + html + "</div>");
+        Assert.Contains("Rechtsmängeln", Assert.Single(x.Descendants("mark")).Value);
+    }
+
+    [Fact]
+    public void EigeneNormenWerdenGelesen()
+    {
+        List<Norm> n = EigeneNormen.AusMarkdown("// Anmerkung\n# PrüfO\n## § 12 Wiederholung\n(1) Einmal.\n(2) Zweimal.\n## Art. 3a – Frist\nText");
+        Assert.Equal(2, n.Count);
+        Assert.Equal("§ 12", n[0].Nr);
+        Assert.Equal("Wiederholung", n[0].Titel);
+        Assert.Equal("(1) Einmal.\n(2) Zweimal.", n[0].Text);
+        Assert.Equal("Art 3a", n[1].Nr);
+        Assert.Equal("Frist", n[1].Titel);
+        Assert.Empty(EigeneNormen.AusMarkdown(EigeneNormen.Vorlage).Where(x => x.Gesetz != "PrüfO"));
+    }
+
+    [Fact]
+    public void EurLexWirdGelesen()
+    {
+        const string html = """
+            <p class="oj-ti-art">Artikel 6</p><div class="eli-title"><p class="oj-sti-art">Rechtmäßigkeit der Verarbeitung</p></div>
+            <div><p class="oj-normal">(1)   Die Verarbeitung ist nur rechtmäßig, wenn:</p>
+            <table><tbody><tr><td><p class="oj-normal">a)</p></td><td><p class="oj-normal">Einwilligung;</p></td></tr></tbody></table></div>
+            <p class="oj-ti-art">Artikel 7</p><p class="oj-sti-art">Bedingungen für die Einwilligung</p><p class="oj-normal">(1) Text &amp; mehr.</p>
+            """;
+        List<Norm> n = EurLex.AusHtml(html, "DSGVO", "test");
+        Assert.Equal(2, n.Count);
+        Assert.Equal("Art 6", n[0].Nr);
+        Assert.Equal("Rechtmäßigkeit der Verarbeitung", n[0].Titel);
+        Assert.Equal("(1) Die Verarbeitung ist nur rechtmäßig, wenn:\na) Einwilligung;", n[0].Text);
+        Assert.Equal("(1) Text & mehr.", n[1].Text);
+        Assert.Equal("32016R0679", EurLex.Celex("DS-GVO"));
+    }
+
+    [Fact]
+    public void KvasirAntwortWirdGelesen()
+    {
+        const string json = """
+            {"exists":true,"object":{"identity":{"title":"Art. 61 BayHIG"},"provenance":{"source":"Bayern.Recht","retrieved_at":"2026-10-01T00:00:00"},
+             "content":{"label":"Art. 61 Prüfungen","plain_text":"Art. 61 Prüfungen (1) Erster Absatz. (2) Zweiter Absatz."}}}
+            """;
+        Norm? n = Kvasir.AusJson(json, "BayHIG", "Art 61");
+        Assert.NotNull(n);
+        Assert.Equal("Prüfungen", n!.Titel);
+        Assert.Contains("(2) Zweiter Absatz.", n.Text);
+        Assert.Contains("Stand 01.10.2026", n.Quelle);
+        Assert.Null(Kvasir.AusJson("""{"exists":false}""", "X", "§ 1"));
+    }
+}

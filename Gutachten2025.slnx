@@ -1,0 +1,22 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Gutachten2025.Core/Gutachten2025.Core.csproj" />
+  <Project Path="Gutachten2025.Tests/Gutachten2025.Tests.csproj" />
+  <Project Path="Gutachten2025/Gutachten2025.csproj">
+    <Platform Solution="*|Any CPU" Project="x64" />
+    <Platform Solution="*|ARM" Project="x64" />
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy Solution="Release|x64" />
+  </Project>
+  <Project Path="Gutachtentool.Mac/Gutachtentool.Mac.csproj" />
+  <Project Path="Gutachtentool.Oberflaeche/Gutachtentool.Oberflaeche.csproj" />
+  <Project Path="Gutachtentool.Web/Gutachtentool.Web.csproj" />
+</Solution>

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Gutachten2025.ViewModels;
 
 /// <summary>Inhalt der linken Seitenleiste.</summary>
-public enum Leistenanzeige { Bausteine = 0, Sachverhalt = 1, Loesung = 2, Beides = 3 }
+public enum Leistenanzeige { Bausteine = 0, Sachverhalt = 1, Loesung = 2, Beides = 3, Normen = 4 }
 
 /// <summary>
 /// Sachverhalt und Lösung (Markdown im Klausurordner: Sachverhalt.md, Loesung.md) in der linken Seitenleiste
@@ -22,7 +22,7 @@ public sealed partial class MainViewModel
     Leistenanzeige _letzteUnterlage = Leistenanzeige.Sachverhalt;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ZeigtUnterlagen), nameof(UnterlagenTitel), nameof(KannUnterlageBearbeiten))]
+    [NotifyPropertyChangedFor(nameof(ZeigtUnterlagen), nameof(UnterlagenTitel), nameof(KannUnterlageBearbeiten), nameof(ZeigtNormen))]
     public partial Leistenanzeige Leiste { get; set; }
 
     /// <summary>Sachverhalt bzw. Lösung als HTML-Ausschnitt (sicher erzeugt, siehe <see cref="MarkdownHtml"/>).</summary>
@@ -37,6 +37,8 @@ public sealed partial class MainViewModel
 
     public bool ZeigtUnterlagen => Leiste != Leistenanzeige.Bausteine;
 
+    public bool ZeigtNormen => Leiste == Leistenanzeige.Normen;
+
     public bool HatSachverhalt => _sachverhalt.Trim().Length > 0;
     public bool HatLoesung => _loesung.Trim().Length > 0;
 
@@ -45,6 +47,7 @@ public sealed partial class MainViewModel
         Leistenanzeige.Sachverhalt => "Sachverhalt",
         Leistenanzeige.Loesung => "Lösung",
         Leistenanzeige.Beides => "Sachverhalt und Lösung",
+        Leistenanzeige.Normen => "Normen",
         _ => "Bausteine",
     };
 
@@ -79,11 +82,11 @@ public sealed partial class MainViewModel
         }
     }
 
-    public bool KannUnterlageBearbeiten => !KeineKlausur && Leiste is Leistenanzeige.Sachverhalt or Leistenanzeige.Loesung;
+    public bool KannUnterlageBearbeiten => !KeineKlausur && Leiste is Leistenanzeige.Sachverhalt or Leistenanzeige.Loesung or Leistenanzeige.Normen;
 
     partial void OnLeisteChanged(Leistenanzeige value)
     {
-        if (value != Leistenanzeige.Bausteine) _letzteUnterlage = value;
+        if (value is not (Leistenanzeige.Bausteine or Leistenanzeige.Normen)) _letzteUnterlage = value;
         UnterlageSichern();
         UnterlagenLaden();
     }
@@ -137,13 +140,16 @@ public sealed partial class MainViewModel
         string? ordner = KlausurName.Length > 0 ? _ablage.KlausurOrdner(KlausurName) : null;
         _sachverhalt = ordner is null ? string.Empty : Lesen(Path.Combine(ordner, KlausurAblage.Sachverhalt));
         _loesung = ordner is null ? string.Empty : Lesen(Path.Combine(ordner, KlausurAblage.Loesung));
-        UnterlagenHtml = Leiste switch
+        string html = Leiste switch
         {
             Leistenanzeige.Sachverhalt => MarkdownHtml.Umwandeln(_sachverhalt),
             Leistenanzeige.Loesung => MarkdownHtml.Umwandeln(_loesung),
             Leistenanzeige.Beides => Abschnitt("Sachverhalt", _sachverhalt) + Abschnitt("Lösung", _loesung),
+            Leistenanzeige.Normen => NormenHtml(),
             _ => string.Empty,
         };
+        // Normzitate: Hinweis beim Überfahren, Klick bzw. Strg+Klick zeigt den Volltext.
+        UnterlagenHtml = Leiste == Leistenanzeige.Bausteine ? html : Normverweise.Auszeichnen(html, NormHinweis);
         UnterlagenWoerter = Unterlagenwoerter.Aus(_sachverhalt, _loesung);
         OnPropertyChanged(nameof(HatSachverhalt));
         OnPropertyChanged(nameof(HatLoesung));
@@ -177,6 +183,7 @@ public sealed partial class MainViewModel
     {
         Leistenanzeige.Sachverhalt => KlausurAblage.Sachverhalt,
         Leistenanzeige.Loesung => KlausurAblage.Loesung,
+        Leistenanzeige.Normen => Normensammlung.EigeneDatei,
         _ => null,
     } is { } name && KlausurName.Length > 0
         ? Path.Combine(_ablage.Wurzel, _ablage.KlausurEinrichten(KlausurName, _notenliste), name)
@@ -195,7 +202,12 @@ public sealed partial class MainViewModel
                 _ui.Melden(Meldungsart.Information, "Sachverhalt oder Lösung wählen", "Bearbeiten lässt sich nur eines von beiden.");
                 return;
             }
-            UnterlagenEntwurf = Leiste == Leistenanzeige.Sachverhalt ? _sachverhalt : _loesung;
+            UnterlagenEntwurf = Leiste switch
+            {
+                Leistenanzeige.Sachverhalt => _sachverhalt,
+                Leistenanzeige.Normen => Lesen(_bearbeitungsPfad) is { Length: > 0 } eigene ? eigene : EigeneNormen.Vorlage,
+                _ => _loesung,
+            };
             UnterlageInBearbeitung = true;
         }
         catch (Exception ex)
@@ -235,13 +247,21 @@ public sealed partial class MainViewModel
         try
         {
             string text = (UnterlagenEntwurf ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
+            bool eigeneNormen = Path.GetFileName(pfad).Equals(Normensammlung.EigeneDatei, StringComparison.OrdinalIgnoreCase);
+            // Unveränderte Vorlage der eigenen Normen nicht speichern.
+            if (eigeneNormen && text.Trim() == EigeneNormen.Vorlage.Trim()) text = string.Empty;
             if (text.Trim().Length == 0)
             {
-                if (File.Exists(pfad)) File.Delete(pfad);
+                if (File.Exists(pfad))
+                {
+                    File.Delete(pfad);
+                    if (eigeneNormen && beenden) NormensammlungLaden();
+                }
                 return;
             }
             if (Lesen(pfad) == text) return;
             Schreiben(pfad, text.TrimEnd() + "\n");
+            if (eigeneNormen && beenden) NormensammlungLaden();
         }
         catch (Exception ex)
         {

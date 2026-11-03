@@ -51,6 +51,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
 
         EditorFormatieren();
         BedienungEinrichten();
+        NormenEinrichten();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Initialisieren();
         KlausurAuswahlSetzen();
