@@ -46,6 +46,8 @@
                             <button @onclick="() => Los(_vm.NotenlisteOeffnenCommand)">Notenliste @Oeffnen</button>
                             <button @onclick="() => Los(_vm.ErwartungshorizontOeffnenCommand)">Erwartungshorizont @Oeffnen</button>
                             <button @onclick="() => Los(_vm.TeilnehmendeImportierenCommand)">Teilnehmendenliste @Laden …</button>
+                            <button @onclick="() => Los(_vm.ArbeitsdokumenteImportierenCommand)" title="Bearbeitungen und/oder Erstvoten (PDF, DOCX) als ZIP, Ordner oder Einzeldatei; Dateiname beginnt mit der Kennziffer">Bearbeitungen/Erstvoten importieren …</button>
+                            <button @onclick="() => Los(_vm.ZweitkorrekturAnlegenCommand)" title="Neuer Ordner „… - Zweitkorrektur“ mit Vorlage (Zweitgutachten), Bausteinen und Einstellungen; danach Teilnehmendenliste mit Erstnoten">Zweitkorrektur anlegen …</button>
                             <button @onclick="() => Los(_vm.KennziffernEingebenCommand)" title="Bereich (z. B. 1001-1060) oder Liste; nicht vergebene entfernen">Kennziffern eingeben …</button>
                             <button @onclick="() => Los(_vm.KlausurenportalExportierenCommand)" title="Notenliste und vorhandene Gutachten-PDFs als ZIP für das Prüfungsportal">Export für das Prüfungsportal (ZIP)</button>
                             <hr />
@@ -60,6 +62,13 @@
                             <button @onclick="() => Los(_vm.BausteinstatistikSendenCommand)" title="Nur Bausteine und Zahl der Gutachten – keine Kennziffern oder Texte">Bausteinstatistik an das KI-Portal senden …</button>
                             <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
                             <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
+                            @if (!Plattform.ImBrowser)
+                            {
+                                <hr />
+                                <label class="schalter" title="Abgeschaltet: Das Gutachten wird nur im Klausurordner gespeichert.">
+                                    <input type="checkbox" checked="@_vm.WordOeffnen" @onchange="e => _vm.WordOeffnen = e.Value is true" /> Gutachten nach dem Erstellen öffnen
+                                </label>
+                            }
                         </div>
                     }
                 </div>
@@ -150,10 +159,25 @@
                               @oninput="e => _vm.UnterlagenEntwurf = e.Value as string ?? string.Empty"></textarea>
                     <p class="tipp">Markdown: # Überschrift · **fett** · *kursiv* · - Aufzählung · Leerzeile = neuer Absatz</p>
                 }
+                else if (_vm.UnterlageLeerSichtbar && _vm.ZeigtDokument)
+                {
+                    <div class="leer">
+                        <p>@_vm.UnterlageLeerHinweis</p>
+                        @if (_vm.Kennung.Length > 0)
+                        {
+                            <button class="knopf" @onclick="() => Los(_vm.DokumentFuerKennungCommand)">Datei zu „@_vm.Kennung“ wählen …</button>
+                        }
+                        <button class="knopf" @onclick="() => Los(_vm.UnterlageImportierenCommand)">Mehrere (ZIP, Ordner) …</button>
+                    </div>
+                }
                 else if (_vm.UnterlageLeerSichtbar)
                 {
                     <p class="leer">@_vm.UnterlageLeerHinweis
                         (<button class="verweis" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)">Klausurinformationen vorbereiten</button>)</p>
+                }
+                else if (_vm.UnterlagenPdf is not null)
+                {
+                    <iframe class="pdfansicht" src="@_pdfUrl" title="@_vm.UnterlagenTitel"></iframe>
                 }
                 else
                 {
@@ -178,6 +202,11 @@
                     <button class="knopf leise" @onclick="() => Los(_vm.NeueGruppeOhneBezugCommand)" disabled="@_vm.KeineKlausur">+ Gruppe</button>
                     <button class="knopf leise" @onclick="() => Los(_vm.BausteinRueckgaengigCommand)" disabled="@(!_vm.KannRueckgaengig)" title="Letzte Änderung an den Bausteinen zurücknehmen">↶</button>
                 </div>
+                @if (_vm.BausteineSindBeispiele)
+                {
+                    <div class="hinweisleiste">Diese Klausur enthält noch die früher mitgelieferten Beispielbausteine.
+                        <button class="verweis" @onclick="() => Los(_vm.BeispieleEntfernenCommand)">Entfernen …</button></div>
+                }
                 <div class="baum">
                     @if (_vm.KeineKlausur)
                     {
@@ -185,8 +214,12 @@
                     }
                     else if (_vm.KeineBausteine)
                     {
-                        <p class="leer">Noch keine Textbausteine. „+ Baustein“ legt einen an; ein Paket aus dem KI-Portal bringt fertige mit
-                            (<button class="verweis" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)">Klausurinformationen vorbereiten</button>).</p>
+                        <div class="leer">
+                            <p><strong>Noch keine Bausteine</strong></p>
+                            <button class="knopf haupt" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)" title="Im KI-Portal aus Sachverhalt und Lösung Textbausteine, Rohpunkteschema und Erwartungshorizont erzeugen lassen">Im Portal generieren lassen …</button>
+                            <button class="knopf" @onclick="() => Los(_vm.FormulierungenBearbeitenCommand)" title="Texte.txt der Klausur öffnen: je Zeile ein Baustein, „+Gruppe“ für Gruppen">Text-Datei erstellen …</button>
+                            <p class="tipp">Tipp: Text im Gutachten, im Sachverhalt oder in der Lösung markieren und „+ Baustein“ wählen (im Gutachten auch Strg+S) – die Stelle wird als Formulierungshilfe gespeichert.</p>
+                        </div>
                     }
                     else if (_vm.KeineTreffer)
                     {
@@ -205,7 +238,11 @@
         <main class="mitte">
             @if (_vm is not null)
             {
-                <section class="angaben">
+                <section class="angaben @(_vm.Zweitkorrekturmodus ? "zweitkorrektur" : "")">
+                    @if (_vm.Zweitkorrekturmodus)
+                    {
+                        <div class="modus" title="Zweitkorrekturmodus: Erstnote über der Notenauswahl, Schlusssatz nach Notenvergleich, uneingeschränkte Zustimmung möglich">Zweitkorrektur</div>
+                    }
                     <div class="feldgruppe @(_vm.KennungVorhanden ? "offen" : "")">
                         <label for="f-student">@_vm.KennungsBezeichnung</label>
                         <input id="f-student" list="teilnehmende" value="@_vm.Student" @onchange="e => StudentSetzen(e.Value as string)" autocomplete="off" />
@@ -225,13 +262,19 @@
                     }
                     <label class="schalter"><input type="checkbox" checked="@_vm.Anonym" @onchange="e => _vm.Anonym = e.Value is true" /> anonym</label>
                     <div class="feldgruppe @(_vm.NoteOffen ? "offen" : "")" title="@(_vm.NoteOffen ? "Note noch nicht gewählt" : null)">
-                        <label for="f-note">Note</label>
-                        <select id="f-note" value="@_vm.NotenIndex" @onchange="e => _vm.NotenIndex = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                        <label for="f-note">@_vm.NotenKopf</label>
+                        <select id="f-note" value="@_vm.NotenIndex" disabled="@_vm.NoteGesperrt" @onchange="e => _vm.NotenIndex = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
                             @for (int i = 0; i < _vm.NotenAuswahl.Count; i++)
                             {
                                 <option value="@i">@_vm.NotenAuswahl[i]</option>
                             }
                         </select>
+                        @if (_vm.Zweitkorrekturmodus)
+                        {
+                            <label class="schalter" title="@_vm.ZustimmungHinweis">
+                                <input type="checkbox" checked="@_vm.UneingeschraenkteZustimmung" @onchange="e => _vm.UneingeschraenkteZustimmung = e.Value is true" /> Uneingeschränkte Zustimmung
+                            </label>
+                        }
                     </div>
                     <div class="feldgruppe schmal @(_vm.SeitenOffen ? "offen" : "")" title="@(_vm.SeitenOffen ? "Seitenzahl fehlt" : null)">
                         <label for="f-seiten">Seiten</label>
@@ -252,6 +295,45 @@
                             }
                         </div>
                     }
+                    @if (_vm.SchlusssatzVorschau.Length > 0)
+                    {
+                        <div class="hinweiszeile schluss" title="Schlusssatz im Gutachten (###SCHLUSS###) nach Vergleich der Notenstufen">@_vm.SchlusssatzVorschau</div>
+                    }
+                    @if (_vm.NoteOffen)
+                    {
+                        <div class="hinweiszeile">Note noch nicht gewählt –
+                            <button class="verweis" @onclick="_vm.NoteBestaetigen">@_vm.NotenIndex Punkte bestätigen</button></div>
+                    }
+                    @if (_vm.UneingeschraenkteZustimmung)
+                    {
+                        <div class="hinweiszeile zustimmung">@_vm.ZustimmungHinweis</div>
+                    }
+                    @if (_vm.DrittgutachtenErforderlich)
+                    {
+                        <div class="hinweiszeile warnung">⚠ @_vm.DrittgutachtenHinweis</div>
+                    }
+                    @if (_vm.EinigungSichtbar)
+                    {
+                        <div class="feldgruppe">
+                            <label for="f-einigung">Einigungsnote</label>
+                            <select id="f-einigung" value="@_vm.EinigungsIndex" @onchange="e => _vm.EinigungsIndex = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                                @for (int i = 0; i < _vm.EinigungsAuswahl.Count; i++)
+                                {
+                                    <option value="@i">@_vm.EinigungsAuswahl[i]</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="feldgruppe schmal">
+                            <label for="f-gespraech">Gespräch am</label>
+                            <input id="f-gespraech" type="date" value="@(_vm.Gespraechsdatum?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))"
+                                   @onchange="e => _vm.Gespraechsdatum = DateTimeOffset.TryParse(e.Value as string, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out DateTimeOffset d) ? d : null" />
+                        </div>
+                        <label class="schalter"><input type="checkbox" checked="@_vm.ErstgutachterZugestimmt" @onchange="e => _vm.ErstgutachterZugestimmt = e.Value is true" /> Erstgutachter hat zugestimmt</label>
+                        @if (_vm.VermerkText.Length > 0)
+                        {
+                            <div class="hinweiszeile schluss" title="Vermerk im Gutachten (###VERMERK###, sonst am Ende des Textes)">@_vm.VermerkText</div>
+                        }
+                    }
                     @if (_vm.InBearbeitung)
                     {
                         <div class="hinweiszeile">@_vm.BearbeitungsHinweis</div>
@@ -259,7 +341,10 @@
                     @if (_vm.KennungVorhanden)
                     {
                         <div class="hinweiszeile warnung">⚠ @_vm.KennungHinweis
-                            <button class="verweis" @onclick="() => Los(_vm.VorhandenesOeffnenCommand)">Öffnen</button>
+                            @if (_vm.KannVorhandenesOeffnen)
+                            {
+                                <button class="verweis" @onclick="() => Los(_vm.VorhandenesOeffnenCommand)">Öffnen</button>
+                            }
                         </div>
                     }
                     <label class="schalter" title="Fehlende Angaben (Note, Seiten, Gliederung) hervorheben und vor dem Erstellen nachfragen">
@@ -267,14 +352,19 @@
                     </label>
                 </section>
 
-                @if (_vm.HatKriterien || _vm.TeilpunkteSichtbar || _vm.HatNotenvorschlag)
+                @if (_vm.HatKriterien || _vm.TeilpunkteSichtbar || _vm.HatNotenvorschlag || !_vm.HatSchema)
                 {
                     <section class="bewertung">
+                        @if (!_vm.HatSchema && !_vm.KeineKlausur)
+                        {
+                            <button class="verweis" @onclick="() => Los(_vm.KlausurinformationenVorbereitenCommand)"
+                                    title="Kein Rohpunkteschema: im KI-Portal aus Sachverhalt und Lösung erzeugen lassen">Rohpunkteschema im Portal generieren lassen …</button>
+                        }
                         @foreach (KriteriumAuswahl k in _vm.Kriterien)
                         {
                             <div class="feldgruppe @(k.Hervorgehoben ? "offen" : "")">
                                 <label>@k.Name</label>
-                                <select id="@(k.Name.Contains("Gliederung", StringComparison.CurrentCultureIgnoreCase) ? "f-kriterien" : null)" value="@k.Index" @onchange="e => k.Index = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
+                                <select id="@(k.Hervorgehoben || k.Name.Contains("Gliederung", StringComparison.CurrentCultureIgnoreCase) ? "f-kriterien" : null)" value="@k.Index" @onchange="e => k.Index = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)">
                                     @for (int i = 0; i < k.Optionen.Count; i++)
                                     {
                                         <option value="@i">@k.Optionen[i]</option>
@@ -438,6 +528,27 @@
     void VmGeaendert(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.HatSchema) && _vm?.HatSchema == false) _reiter = 0;
+        if (e.PropertyName == nameof(MainViewModel.UnterlagenPdf)) _ = PdfLadenAsync(_vm?.UnterlagenPdf);
+        Neuzeichnen();
+    }
+
+    // ---------- Bearbeitung/Erstvotum als PDF (Blob-Adresse im iframe) ----------
+
+    string? _pdfUrl;
+
+    async Task PdfLadenAsync(string? pfad)
+    {
+        try
+        {
+            if (_pdfUrl is not null) await Js.InvokeVoidAsync("gutachtentool.unterlage.adresseFreigeben", _pdfUrl);
+            _pdfUrl = null;
+            if (pfad is not null && System.IO.File.Exists(pfad))
+                _pdfUrl = await Js.InvokeAsync<string>("gutachtentool.unterlage.pdfAdresse", await System.IO.File.ReadAllBytesAsync(pfad));
+        }
+        catch (Exception ex) when (ex is JSException or System.IO.IOException or UnauthorizedAccessException)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
         Neuzeichnen();
     }
 
@@ -515,6 +626,7 @@
     {
         (Leistenanzeige.Bausteine, "Bausteine"), (Leistenanzeige.Sachverhalt, "Sachverhalt"),
         (Leistenanzeige.Loesung, "Lösung"), (Leistenanzeige.Beides, "Beides"), (Leistenanzeige.Normen, "Normen"),
+        (Leistenanzeige.Bearbeitung, "Bearbeitung"), (Leistenanzeige.Erstvotum, "Erstvotum"),
     };
 
     // ---------- Normen und Gliederung ----------

@@ -58,6 +58,14 @@ public sealed partial class MainWindow
             return;
         }
         if (alt) return;
+        // Strg+S mit Markierung in Sachverhalt, Lösung, Bearbeitung oder Erstvotum: als Baustein (Formulierungshilfe) speichern.
+        if (strg && e.Key == VirtualKey.S && ViewModel.UnterlagenSichtbar
+            && Unterlagenansicht.Nachfahren<RichTextBlock>(UnterlagenInhalt).Select(b => b.SelectedText?.Trim()).FirstOrDefault(t => !string.IsNullOrEmpty(t)) is string auszug)
+        {
+            e.Handled = true;
+            await ViewModel.NeuerBausteinAsync(auszug, Texte.SelectedItem as Baustein);
+            return;
+        }
         switch (e.Key)
         {
             case VirtualKey.F1:
@@ -469,8 +477,15 @@ public sealed partial class MainWindow
     void UnterlagenZeichnen()
     {
         string html = ViewModel.UnterlagenHtml;
-        if (html == _unterlagenGezeichnet) return;
-        _unterlagenGezeichnet = html;
+        string schluessel = (ViewModel.UnterlagenPdf ?? string.Empty) + "\u0001" + html;
+        if (schluessel == _unterlagenGezeichnet) return;
+        _unterlagenGezeichnet = schluessel;
+        if (ViewModel.UnterlagenPdf is string pdf)
+        {
+            PdfZeichnen(pdf);
+            UnterlagenScroller.ChangeView(null, 0, null, disableAnimation: true);
+            return;
+        }
         Unterlagenansicht.Fuellen(UnterlagenInhalt, html, 14, UnterlagenAktionen);
         UnterlagenScroller.ChangeView(null, 0, null, disableAnimation: true);
         if (UnterlagenSuche.Text.Trim().Length > 0) DispatcherQueue.TryEnqueue(() => UnterlagenSuchen(neu: false));
@@ -907,7 +922,7 @@ public sealed partial class MainWindow
         ("Strg+F", "Bausteinsuche (Text, #Kürzel, Nummer); Eingabetaste fügt den ersten Treffer ein, Esc beendet"),
         ("Kürzel + Tab", "Baustein mit festem Kürzel einfügen, z. B. „subs1“ oder „#subs1“ tippen, dann Tab"),
         ("Alt+Nummer", "Baustein nach Nummer einfügen (obere Ziffernreihe); bei einer Gruppe wird diese ausgewählt"),
-        ("Strg+S", "Markierten Text als neuen Baustein speichern (ohne Markierung: alles speichern)"),
+        ("Strg+S", "Markierten Text (Gutachten, Sachverhalt, Lösung, Bearbeitung) als neuen Baustein speichern (ohne Markierung: alles speichern)"),
         ("Strg+Z", "Im Baum: letzte Änderung an Bausteinen rückgängig · im Editor: Texteingabe rückgängig"),
         ("Entf / F2", "Im Baum: Baustein löschen (rückgängig möglich) / bearbeiten"),
         ("Strg+Plus / Minus / 0", "Editor vergrößern / verkleinern / zurücksetzen (auch Strg+Mausrad)"),
@@ -984,6 +999,20 @@ public sealed partial class MainWindow
                "warnt vor dem Erstellen bei einer Abweichung ab 4 Punkten und trägt Erstnote und Differenz in die Notenliste ein. " +
                "Die Kennziffern ergänzen die Teilnehmendenliste. „Einverstanden“ übernimmt die Erstnote und fügt einen Zustimmungssatz ein; die Übersicht zeigt die mittlere Abweichung. " +
                "Beim Export eigener Pakete werden Erstnoten nie mitgegeben.");
+        Absatz("Zweitkorrektur anlegen (Ordner-Menü bzw. Übersicht) kopiert Vorlage, Bausteine, Einstellungen und Unterlagen in den Ordner „… - Zweitkorrektur“ " +
+               "(ohne Noten, Gutachten und Teilnehmende), stellt die Vorlage auf „Zweitgutachten/Zweitvotum“ um und fragt nach der Teilnehmendenliste mit Noten. " +
+               "Hat die importierte Liste eine Spalte „Note“ bzw. „Punkte“, gelten diese als Erstnoten: Das Programm wechselt in den Zweitkorrekturmodus " +
+               "(farbige Karte „Arbeit“, Erstnote über der Notenauswahl). Der Schlusssatz (###SCHLUSS###) lautet bei gleicher Notenstufe „Insgesamt sehe ich die Arbeit übereinstimmend als …“, " +
+               "bei schlechterer „Leider handelt es sich aus meiner Sicht nur um …“, bei besserer „Es handelt sich aus meiner Sicht bereits um …“. " +
+               "„Uneingeschränkte Zustimmung“ setzt die Erstnote fest und statt des Entwurfs den Zustimmungstext ein; ###ERSTNOTE### gibt die Erstnote aus. " +
+               "Weichen die Noten um mehr als 3 Punkte ab, ist ohne Einigung ein Drittgutachten erforderlich: Einigungsnote, Datum des Gesprächs und Zustimmung " +
+               "des Erstgutachters ergeben einen Vermerk (###VERMERK### bzw. am Ende des Textes) und die Spalte „Einigungsnote“ der Notenliste.");
+        Absatz("Bearbeitung und Erstvotum", fett: true);
+        Absatz("Die linke Leiste zeigt zur eingegebenen Kennziffer die Bearbeitung bzw. das Erstvotum (PDF oder DOCX aus den Unterordnern „Bearbeitungen“ und „Erstvoten“). " +
+               "Import einzeln je Arbeit, als ZIP (auch gemischt) oder ganzer Ordner; „Scannen…“ öffnet die Scan-App und den Zielordner.");
+        Absatz("Drucken", fett: true);
+        Absatz("„Alle Gutachten drucken“ wartet, solange sich Aufträge in der Druckwarteschlange stauen, hält bei Druckerstörungen an und führt ein Druckprotokoll. " +
+               "Danach lassen sich nur die noch nicht gedruckten Gutachten drucken; die Übersicht zeigt „gedruckt“ bzw. „Druckfehler“.");
         Absatz("Prüfungsportal", fett: true);
         Absatz("Ordner › Export für das Prüfungsportal erstellt ein ZIP mit der Notenliste und den Gutachten als PDF (Umwandlung mit Word) für „Noten/Gutachten hochladen“.");
         Absatz("Pakete", fett: true);

@@ -301,7 +301,7 @@ public sealed partial class MainWindow
             PlaceholderText = "leer = linear nach Anteil an der Höchstpunktzahl",
             TextWrapping = TextWrapping.Wrap,
         };
-        TextBox kriterien = Mehrzeilig("Formalkriterien – „+Bezeichnung | Satzvorlage“, darunter je Zeile eine Stufe", KlausurKonfigDatei.KriterienText(vorgabe), 260,
+        TextBox kriterien = Mehrzeilig("Formalkriterien – „+Bezeichnung | Satzvorlage“ („+!“ = Pflichtangabe), darunter je Zeile eine Stufe", KlausurKonfigDatei.KriterienText(vorgabe), 260,
             "+Gliederung | {subjekt} {wert}.\nist klar gegliedert\nhätte von einer Gliederung profitiert");
         TextBlock fehler = Fehlerzeile();
 

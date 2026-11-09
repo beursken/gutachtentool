@@ -70,6 +70,7 @@ public sealed partial class MainViewModel
         {
             Kennzahlen.Clear();
             Verteilung.Clear();
+            AbweichungenAktualisieren(new Dictionary<string, int>());
             Eintraege.Clear();
             _alleEintraege.Clear();
             _uebersichtStand = string.Empty;
@@ -96,6 +97,7 @@ public sealed partial class MainViewModel
         Dictionary<string, Korrekturzeit> zeiten = Korrekturzeiten.Laden(ordner);
         string Zeit(string k) => zeiten.TryGetValue(k, out Korrekturzeit? z) && z.Beginn != default ? ZeitText(z) : string.Empty;
         string Erst(string k) => _erstnoten.TryGetValue(k, out int e) ? $"Erstgutachten {e}" : string.Empty;
+        Dictionary<string, Druckeintrag> druck = Druckprotokoll.Laden(ordner);
 
         var eintraege = new List<UebersichtEintrag>();
         var bekannt = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -111,6 +113,7 @@ public sealed partial class MainViewModel
                 SchemaGeaendert = SchemaAbweichend(ordner, t.Kennung),
                 Zeit = Zeit(t.Kennung),
                 Erstnote = Erst(t.Kennung),
+                Druck = nachKennung.ContainsKey(t.Kennung) ? Druckprotokoll.Text(druck, t.Kennung) : string.Empty,
             });
         }
         foreach (var (k, p) in nachKennung)
@@ -119,7 +122,7 @@ public sealed partial class MainViewModel
             eintraege.Add(new UebersichtEintrag
             {
                 Kennung = k, Punkte = p, HatEntwurf = EntwurfArchiv.Existiert(ordner, k), SchemaGeaendert = SchemaAbweichend(ordner, k),
-                Zeit = Zeit(k), Erstnote = Erst(k),
+                Zeit = Zeit(k), Erstnote = Erst(k), Druck = Druckprotokoll.Text(druck, k),
             });
         }
 
@@ -147,6 +150,7 @@ public sealed partial class MainViewModel
         foreach (Kennzahl z in ZusatzKennzahlen(nachKennung, zeiten, offen)) Kennzahlen.Add(z);
         if (punkte.Count > 0)
             foreach (VerteilungsBalken b in Statistik.Verteilung(punkte, BalkenHoehe)) Verteilung.Add(b);
+        AbweichungenAktualisieren(nachKennung);
     }
 
     /// <summary>Klick in der Übersicht: bewertete Arbeit zum Ändern öffnen bzw. offene Kennung übernehmen.</summary>
@@ -217,8 +221,10 @@ public sealed partial class MainViewModel
             string? quelle = await _ui.DateiWaehlenAsync(".xlsx", ".csv", ".txt");
             if (quelle is null) return;
 
-            List<Teilnehmer> neu = Teilnehmerliste.Importieren(quelle);
+            Teilnehmerimport import = Teilnehmerliste.ImportierenMitNoten(quelle);
+            List<Teilnehmer> neu = import.Teilnehmende;
             List<Teilnehmer> ergebnis = neu;
+            bool ergaenzen = false;
             if (_teilnehmende.Count > 0)
             {
                 int wahl = await _ui.AuswahlAsync("Teilnehmendenliste vorhanden",
@@ -227,6 +233,7 @@ public sealed partial class MainViewModel
                 if (wahl == 0) return;
                 if (wahl == 2)
                 {
+                    ergaenzen = true;
                     ergebnis = _teilnehmende.ToList();
                     foreach (Teilnehmer t in neu)
                     {
@@ -238,10 +245,27 @@ public sealed partial class MainViewModel
             }
             Teilnehmerliste.Speichern(ordner, ergebnis);
             _teilnehmende = ergebnis;
+
+            // Noten des Erstgutachtens → Erstnoten.json (Zweitkorrekturmodus).
+            string notenText = string.Empty;
+            bool neuerModus = false;
+            if (import.Noten.Count > 0)
+            {
+                bool vorher = Zweitkorrekturmodus;
+                var noten = new Dictionary<string, int>(ergaenzen ? _erstnoten : new(), StringComparer.OrdinalIgnoreCase);
+                foreach (var (kz, pt) in import.Noten) noten[kz] = pt;
+                int gespeichert = Erstnoten.Speichern(ordner, noten);
+                ErstnotenLaden();
+                neuerModus = !vorher && Zweitkorrekturmodus;
+                int uebergangen = import.Noten.Count - import.Noten.Keys.Count(Erstnoten.IstKennziffer);
+                notenText = $" {gespeichert} Erstnoten übernommen – Zweitkorrekturmodus." +
+                            (uebergangen > 0 ? $" {uebergangen} Einträge ohne Kennziffer/Matrikelnummer ohne Note übernommen." : string.Empty);
+            }
             SeitenleisteOffen = true;
             UebersichtAktualisieren();
             _ui.Melden(Meldungsart.Erfolg, "Teilnehmendenliste importiert",
-                $"{ergebnis.Count} Teilnehmende. Beim Generieren wird geprüft, ob die Kennung in der Liste steht.");
+                $"{ergebnis.Count} Teilnehmende. Beim Generieren wird geprüft, ob die Kennung in der Liste steht.{notenText}");
+            if (neuerModus) await VorlageAufZweitgutachtenAnbietenAsync(ordner);
         }
         catch (Exception ex)
         {
@@ -277,6 +301,25 @@ public sealed partial class MainViewModel
 
     bool _druckAbbruch;
 
+    /// <summary>Höchstens so viele Aufträge dürfen in der Warteschlange stehen, bevor das nächste Gutachten folgt.</summary>
+    const int DruckWarteschlangeMax = 3;
+
+    /// <summary>Wartet, bis die Warteschlange abgearbeitet ist; liefert ein Druckerproblem (dann anhalten) oder null.</summary>
+    async Task<string?> WarteschlangeAbwartenAsync()
+    {
+        DateTime bis = DateTime.Now.AddMinutes(3);
+        while (!_druckAbbruch)
+        {
+            Druckstand? s = await _ui.DruckerAbfragenAsync();
+            if (s is null) return null; // nicht abfragbar: wie bisher ohne Überwachung
+            if (s.Problem is not null) return s.Problem;
+            if (s.Auftraege < DruckWarteschlangeMax) return null;
+            if (DateTime.Now > bis) return $"Die Druckwarteschlange leert sich nicht ({s.Auftraege} Aufträge seit 3 Minuten).";
+            await Task.Delay(2000);
+        }
+        return null;
+    }
+
     /// <summary>Druckt alle Gutachten der Klausur nacheinander (Reihenfolge wie im Explorer) auf dem Standarddrucker.</summary>
     [RelayCommand]
     async Task AlleDruckenAsync()
@@ -306,27 +349,80 @@ public sealed partial class MainViewModel
                 _ui.Melden(Meldungsart.Information, "Nichts zu drucken", "Im Klausurordner liegen noch keine Gutachten.");
                 return;
             }
-            string von = Path.GetFileNameWithoutExtension(dateien[0]), bis = Path.GetFileNameWithoutExtension(dateien[^1]);
-            if (!await _ui.BestaetigenAsync("Alle Gutachten drucken",
-                    $"{dateien.Count} Gutachten ({von} bis {bis}) werden nacheinander auf dem Windows-Standarddrucker gedruckt. " +
-                    "Word öffnet sich dafür jeweils kurz.\n\nBitte den Standarddrucker vorher prüfen und während des Druckens keine dieser Dateien bearbeiten.",
-                    "Drucken", "Abbrechen"))
-                return;
+            Dictionary<string, Druckeintrag> protokoll = Druckprotokoll.Laden(ordner);
+            string Stamm(string d) => Path.GetFileNameWithoutExtension(d);
+            List<string> offen = dateien.Where(d => !(protokoll.TryGetValue(Stamm(d), out Druckeintrag? e) && e.Ok)).ToList();
+            int gedrucktVorher = dateien.Count - offen.Count, fehlerVorher = dateien.Count(d => protokoll.TryGetValue(Stamm(d), out Druckeintrag? e) && !e.Ok);
+            if (gedrucktVorher > 0)
+            {
+                int wahl = await _ui.AuswahlAsync("Alle Gutachten drucken",
+                    $"Laut Druckprotokoll wurden {gedrucktVorher} von {dateien.Count} Gutachten bereits gedruckt" +
+                    (fehlerVorher > 0 ? $", bei {fehlerVorher} trat ein Fehler auf" : string.Empty) + ".\n\nBitte den Standarddrucker prüfen.",
+                    $"Nur noch nicht gedruckte ({offen.Count})", $"Alle erneut ({dateien.Count})", "Abbrechen");
+                if (wahl == 0) return;
+                if (wahl == 1) dateien = offen;
+                if (dateien.Count == 0)
+                {
+                    _ui.Melden(Meldungsart.Information, "Nichts zu drucken", "Alle Gutachten sind laut Druckprotokoll gedruckt.");
+                    return;
+                }
+            }
+            else
+            {
+                string von = Stamm(dateien[0]), bis = Stamm(dateien[^1]);
+                if (!await _ui.BestaetigenAsync("Alle Gutachten drucken",
+                        $"{dateien.Count} Gutachten ({von} bis {bis}) werden nacheinander auf dem Windows-Standarddrucker gedruckt. " +
+                        "Word öffnet sich dafür jeweils kurz. Das Programm wartet, solange sich in der Druckwarteschlange Aufträge stauen, und hält bei Druckerproblemen an; " +
+                        "das Druckprotokoll hält fest, was gedruckt wurde.\n\nBitte den Standarddrucker vorher prüfen und während des Druckens keine dieser Dateien bearbeiten.",
+                        "Drucken", "Abbrechen"))
+                    return;
+            }
 
             _druckAbbruch = false;
             int gedruckt = 0, fehler = 0;
+            string? halt = null;
             for (int i = 0; i < dateien.Count && !_druckAbbruch; i++)
             {
+                string stamm = Stamm(dateien[i]);
                 _ui.Melden(Meldungsart.Information, "Drucken …",
                     $"{i + 1} von {dateien.Count}: {Path.GetFileName(dateien[i])}", "Abbrechen", () => _druckAbbruch = true);
-                if (_ui.Drucken(dateien[i])) gedruckt++;
+                halt = await WarteschlangeAbwartenAsync();
+                if (halt is not null) break;
+                bool ok = _ui.Drucken(dateien[i]);
+                protokoll[stamm] = new Druckeintrag { Stand = DateTime.Now, Ok = ok, Meldung = ok ? null : "Word ließ sich nicht starten (Details in fehler.log)." };
+                if (ok) gedruckt++;
                 else fehler++;
+                SpeichernStill(ordner, protokoll);
                 // Word braucht Zeit zum Öffnen und Übergeben an die Druckwarteschlange; beim ersten Mal länger.
                 await Task.Delay(i == 0 ? 5000 : 2500);
             }
-            string rest = _druckAbbruch ? $" Abgebrochen – {dateien.Count - gedruckt - fehler} nicht gedruckt." : string.Empty;
-            _ui.Melden(fehler > 0 ? Meldungsart.Warnung : Meldungsart.Erfolg, "Drucken beendet",
-                $"{gedruckt} Gutachten an den Drucker übergeben{(fehler > 0 ? $", {fehler} fehlgeschlagen (Details in fehler.log)" : string.Empty)}.{rest}");
+
+            // Aufträge, die der Spooler als fehlerhaft meldet, im Protokoll als Fehler vermerken.
+            if (halt is null && !_druckAbbruch) await Task.Delay(3000);
+            var dieseRunde = dateien.Select(Stamm).ToList();
+            if (await _ui.DruckerAbfragenAsync() is { } stand)
+                foreach (string dok in stand.FehlerhafteDokumente)
+                    if (Druckprotokoll.Zuordnen(dok, dieseRunde) is string s && protokoll.TryGetValue(s, out Druckeintrag? alt) && alt.Ok)
+                    {
+                        protokoll[s] = new Druckeintrag { Stand = DateTime.Now, Ok = false, Meldung = "Druckauftrag in der Warteschlange fehlerhaft: " + dok };
+                        gedruckt--;
+                        fehler++;
+                    }
+            SpeichernStill(ordner, protokoll);
+            UebersichtAktualisieren();
+
+            int rest = dateien.Count - gedruckt - fehler;
+            string grund = halt is not null ? $" Angehalten: {halt}" : _druckAbbruch ? " Abgebrochen." : string.Empty;
+            _ui.Melden(fehler > 0 || halt is not null ? Meldungsart.Warnung : Meldungsart.Erfolg, "Drucken beendet",
+                $"{gedruckt} Gutachten an den Drucker übergeben{(fehler > 0 ? $", {fehler} fehlgeschlagen" : string.Empty)}" +
+                $"{(rest > 0 ? $", {rest} nicht gedruckt" : string.Empty)}.{grund}" +
+                (fehler > 0 || rest > 0 ? " Erneut „Alle Gutachten drucken“ → „Nur noch nicht gedruckte“ druckt den Rest." : string.Empty));
+
+            static void SpeichernStill(string o, Dictionary<string, Druckeintrag> p)
+            {
+                try { Druckprotokoll.Speichern(o, p); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { EinstellungsSpeicher.Protokollieren(ex); }
+            }
         }
         catch (Exception ex)
         {

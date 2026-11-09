@@ -245,6 +245,13 @@ input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid va
 
 /* ---------- Übersicht ---------- */
 .uebersicht { display: flex; flex-direction: column; min-height: 0; background: var(--papier); border-left: 1px solid var(--linie); }
+/* Kleine Fenster / hohe Skalierung: oberer Teil scrollt, die Liste der Arbeiten behält Platz */
+.uebersicht .oben { max-height: 55%; overflow-y: auto; flex: 0 1 auto; }
+.uebersicht details > summary { cursor: pointer; padding: 4px 12px; font-weight: 600; font-size: 13px; }
+.abstand-links { padding: 4px 12px 0; }
+/* Bearbeitung/Erstvotum als PDF */
+.pdfansicht { width: 100%; flex: 1; min-height: 400px; border: 1px solid var(--linie); border-radius: 4px; background: #fff; }
+.bausteine .hinweisleiste { margin: 6px; padding: 6px 8px; border-radius: 6px; background: var(--warn-hell); font-size: 12.5px; }
 .kennzahlen { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 0; padding: 0 12px 8px; font-size: 13px; }
 .kennzahlen dt { color: var(--text-leise); }
 .kennzahlen dd { margin: 0; font-weight: 600; text-align: right; }
@@ -315,6 +322,11 @@ input:focus, select:focus, textarea:focus, .editor:focus { outline: 2px solid va
 .hinweiszeile.erstnote { color: var(--text-leise); }
 .hinweiszeile.erstnote.abweichend { color: var(--warn); font-weight: 600; }
 .hinweiszeile.warnung { color: var(--warn); font-weight: 600; }
+/* Zweitkorrekturmodus */
+.angaben.zweitkorrektur { outline: 2px solid var(--akzent); outline-offset: 2px; border-radius: 8px; position: relative; }
+.angaben .modus { width: 100%; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--akzent); }
+.hinweiszeile.schluss { font-style: italic; }
+.hinweiszeile.zustimmung { color: var(--akzent); }
 /* Pflichtangaben ohne Eingabe: hervorheben, bis etwas gewählt ist */
 .feldgruppe.offen input, .feldgruppe.offen select { border-color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 25%, transparent); }
 .feldgruppe.offen label { color: var(--warn); }

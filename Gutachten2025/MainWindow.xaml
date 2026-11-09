@@ -78,6 +78,14 @@
                             <MenuFlyoutItem Text="Teilnehmendenliste importieren…" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE716;"/></MenuFlyoutItem.Icon>
                             </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Bearbeitungen/Erstvoten importieren (ZIP, Ordner)…" Command="{x:Bind ViewModel.ArbeitsdokumenteImportierenCommand}"
+                                            ToolTipService.ToolTip="PDF/DOCX je Kennziffer, auch als ZIP; Anzeige in der linken Leiste unter „Bearbeitung“ bzw. „Erstvotum“">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8B5;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Zweitkorrektur anlegen…" Command="{x:Bind ViewModel.ZweitkorrekturAnlegenCommand}"
+                                            ToolTipService.ToolTip="Neuer Ordner „… - Zweitkorrektur“ mit Vorlage (Zweitgutachten), Bausteinen und Einstellungen; danach Teilnehmendenliste mit Erstnoten importieren">
+                                <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8C8;"/></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
                             <MenuFlyoutItem Text="Kennziffern eingeben…" Command="{x:Bind ViewModel.KennziffernEingebenCommand}"
                                             ToolTipService.ToolTip="Bereich (z. B. 1001-1060) oder Liste; nicht vergebene Kennziffern entfernen">
                                 <MenuFlyoutItem.Icon><FontIcon FontSize="16" Glyph="&#xE8EF;"/></MenuFlyoutItem.Icon>
@@ -160,6 +168,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid ColumnSpacing="4">
                                 <Grid.ColumnDefinitions>
@@ -185,6 +194,15 @@
                                             </MenuFlyoutItem>
                                             <MenuFlyoutItem Text="Normen" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Normen">
                                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE82D;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator/>
+                                            <MenuFlyoutItem Text="Bearbeitung (zur Kennziffer)" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Bearbeitung"
+                                                            ToolTipService.ToolTip="PDF oder DOCX aus dem Unterordner „Bearbeitungen“ (Dateiname beginnt mit der Kennziffer)">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Erstvotum (zur Kennziffer)" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Erstvotum"
+                                                            ToolTipService.ToolTip="PDF oder DOCX aus dem Unterordner „Erstvoten“ (Dateiname beginnt mit der Kennziffer)">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8C8;"/></MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </DropDownButton.Flyout>
@@ -288,15 +306,33 @@
                             <StackPanel Grid.Row="2" Spacing="8" Margin="4,16" VerticalAlignment="Top"
                                         Visibility="{x:Bind ViewModel.KeineBausteine, Mode=OneWay}">
                                 <TextBlock Text="Noch keine Bausteine" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                <Button HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}"
+                                        Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"
+                                        ToolTipService.ToolTip="Im KI-Portal aus Sachverhalt und Lösung Textbausteine, Rohpunkteschema und Erwartungshorizont erzeugen lassen (Paket)">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE774;"/>
+                                        <TextBlock Text="Im Portal generieren lassen…"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.FormulierungenBearbeitenCommand}"
+                                        ToolTipService.ToolTip="Texte.txt der Klausur im Editor öffnen: je Zeile ein Baustein, „+Gruppe“ für Gruppen, Tabulator für Unterebenen">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A5;"/>
+                                        <TextBlock Text="Text-Datei erstellen…"/>
+                                    </StackPanel>
+                                </Button>
                                 <TextBlock TextWrapping="Wrap" Opacity="0.75"
-                                           Text="Formulierungen anlegen, eine Formulierungsdatei übernehmen oder ein Paket (z. B. aus dem KI-Portal) importieren."/>
-                                <Button Content="Neuer Baustein…" Command="{x:Bind ViewModel.NeuerBausteinOhneBezugCommand}"/>
-                                <Button Content="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
-                                <Button Content="Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
-                                <HyperlinkButton Content="Klausurinformationen im KI-Portal vorbereiten" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"/>
+                                           Text="Tipp: Text im Gutachten, im Sachverhalt oder in der Lösung markieren und Strg+S drücken – die Stelle wird als Formulierungshilfe gespeichert."/>
+                                <HyperlinkButton Content="Formulierungsdatei oder Paket importieren…" Command="{x:Bind ViewModel.PaketImportierenWaehlenCommand}"/>
                             </StackPanel>
                             <TextBlock Grid.Row="2" Margin="4,16" Text="Keine Treffer." Opacity="0.7" VerticalAlignment="Top"
                                        Visibility="{x:Bind ViewModel.KeineTreffer, Mode=OneWay}"/>
+                            <InfoBar Grid.Row="3" IsOpen="{x:Bind ViewModel.BausteineSindBeispiele, Mode=OneWay}" IsClosable="False" Severity="Informational"
+                                     Title="Beispielbausteine" Message="Diese Klausur enthält noch die früher mitgelieferten Beispielbausteine.">
+                                <InfoBar.ActionButton>
+                                    <Button Content="Entfernen…" Command="{x:Bind ViewModel.BeispieleEntfernenCommand}"/>
+                                </InfoBar.ActionButton>
+                            </InfoBar>
                         </Grid>
                     </Border>
 
@@ -375,10 +411,24 @@
                                             <MenuFlyoutItem Text="Normen" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Normen">
                                                 <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE82D;"/></MenuFlyoutItem.Icon>
                                             </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator/>
+                                            <MenuFlyoutItem Text="Bearbeitung (zur Kennziffer)" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Bearbeitung"
+                                                            ToolTipService.ToolTip="PDF oder DOCX aus dem Unterordner „Bearbeitungen“ (Dateiname beginnt mit der Kennziffer)">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A5;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Erstvotum (zur Kennziffer)" Command="{x:Bind ViewModel.LeisteZeigenCommand}" CommandParameter="Erstvotum"
+                                                            ToolTipService.ToolTip="PDF oder DOCX aus dem Unterordner „Erstvoten“ (Dateiname beginnt mit der Kennziffer)">
+                                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8C8;"/></MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
                                         </MenuFlyout>
                                     </DropDownButton.Flyout>
                                 </DropDownButton>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                                    <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageDateiOeffnenCommand}"
+                                            Visibility="{x:Bind ViewModel.ZeigtDokument, Mode=OneWay}"
+                                            ToolTipService.ToolTip="Datei im zugeordneten Programm öffnen">
+                                        <FontIcon FontSize="16" Glyph="&#xE8A7;"/>
+                                    </Button>
                                     <Button Padding="6,4" Command="{x:Bind ViewModel.UnterlageBearbeitenCommand}"
                                             IsEnabled="{x:Bind ViewModel.KannUnterlageBearbeiten, Mode=OneWay}"
                                             Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.UnterlageInBearbeitung), Mode=OneWay}"
@@ -435,7 +485,20 @@
                             <StackPanel Grid.Row="3" Spacing="8" Margin="4,16" VerticalAlignment="Top"
                                         Visibility="{x:Bind ViewModel.UnterlageLeerSichtbar, Mode=OneWay}">
                                 <TextBlock TextWrapping="Wrap" Opacity="0.75" Text="{x:Bind ViewModel.UnterlageLeerHinweis, Mode=OneWay}"/>
+                                <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.ZeigtDokument, Mode=OneWay}">
+                                    <Button Content="Datei zu dieser Kennziffer wählen…" Command="{x:Bind ViewModel.DokumentFuerKennungCommand}"
+                                            ToolTipService.ToolTip="PDF oder DOCX wählen; wird als „Kennziffer.pdf“ abgelegt"/>
+                                    <Button Content="Mehrere importieren (ZIP, Ordner)…" Command="{x:Bind ViewModel.UnterlageImportierenCommand}"/>
+                                    <Button Command="{x:Bind ViewModel.ScannenCommand}"
+                                            ToolTipService.ToolTip="Scan-App öffnen und den Zielordner zeigen; Scans als „Kennziffer.pdf“ speichern">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon FontSize="16" Glyph="&#xE8FE;"/>
+                                            <TextBlock Text="Scannen…"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
                                 <Button Content="Text eingeben…" Command="{x:Bind ViewModel.UnterlageBearbeitenCommand}"
+                                        Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.ZeigtDokument), Mode=OneWay}"
                                         IsEnabled="{x:Bind ViewModel.KannUnterlageBearbeiten, Mode=OneWay}"/>
                                 <Button Content="Aus Datei übernehmen…" Command="{x:Bind ViewModel.UnterlageImportierenCommand}"
                                         IsEnabled="{x:Bind local:Darstellung.Umgekehrt(ViewModel.KeineKlausur), Mode=OneWay}"/>
@@ -472,16 +535,26 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <Border x:Name="ArbeitKarte" Grid.Column="0" Padding="14,10" CornerRadius="8" BorderThickness="1"
+                            <Border x:Name="ArbeitKarte" Grid.Column="0" Padding="14,10" CornerRadius="8"
+                                    BorderThickness="{x:Bind local:Darstellung.Modusdicke(ViewModel.Zweitkorrekturmodus), Mode=OneWay}"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                    BorderBrush="{x:Bind local:Darstellung.Modusrahmen(ViewModel.Zweitkorrekturmodus), Mode=OneWay}">
                                 <StackPanel Spacing="8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Arbeit" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Arbeit" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                            <Border CornerRadius="4" Padding="6,1" VerticalAlignment="Center"
+                                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                    Visibility="{x:Bind ViewModel.Zweitkorrekturmodus, Mode=OneWay}"
+                                                    ToolTipService.ToolTip="Zweitkorrekturmodus: Erstnote über der Notenauswahl, Schlusssatz nach Notenvergleich, uneingeschränkte Zustimmung möglich">
+                                                <TextBlock Text="ZWEITKORREKTUR" FontSize="11" FontWeight="SemiBold" CharacterSpacing="60"
+                                                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                                            </Border>
+                                        </StackPanel>
                                         <CheckBox x:Name="Anonym" Grid.Column="1" Content="Anonymisiert" MinWidth="0" Padding="6,0,0,0"
                                                   ToolTipService.ToolTip="Anonymisiert: Kennziffer statt Name und Matrikelnummer"
                                                   IsChecked="{x:Bind ViewModel.Anonym, Mode=TwoWay}"/>
@@ -503,10 +576,18 @@
                                                  Text="{x:Bind ViewModel.Matrikel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                         <Border BorderThickness="2" CornerRadius="6" Padding="2"
                                                 BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(ViewModel.NoteOffen), Mode=OneWay}">
-                                            <ComboBox x:Name="Grade" Header="Note" MinWidth="180"
-                                                      ToolTipService.ToolTip="Bausteine mit unpassendem Punktebereich werden abgeblendet (farbiger Rahmen: Note noch nicht gewählt)"
-                                                      ItemsSource="{x:Bind ViewModel.NotenAuswahl}"
-                                                      SelectedIndex="{x:Bind ViewModel.NotenIndex, Mode=TwoWay}"/>
+                                            <StackPanel Spacing="2">
+                                                <ComboBox x:Name="Grade" Header="{x:Bind ViewModel.NotenKopf, Mode=OneWay}" MinWidth="180"
+                                                          IsEnabled="{x:Bind local:Darstellung.Umgekehrt(ViewModel.NoteGesperrt), Mode=OneWay}"
+                                                          DropDownClosed="Grade_DropDownClosed"
+                                                          ToolTipService.ToolTip="Bausteine mit unpassendem Punktebereich werden abgeblendet (farbiger Rahmen: Note noch nicht gewählt)"
+                                                          ItemsSource="{x:Bind ViewModel.NotenAuswahl}"
+                                                          SelectedIndex="{x:Bind ViewModel.NotenIndex, Mode=TwoWay}"/>
+                                                <CheckBox Content="Uneingeschränkte Zustimmung" MinWidth="0"
+                                                          Visibility="{x:Bind ViewModel.Zweitkorrekturmodus, Mode=OneWay}"
+                                                          IsChecked="{x:Bind ViewModel.UneingeschraenkteZustimmung, Mode=TwoWay}"
+                                                          ToolTipService.ToolTip="{x:Bind ViewModel.ZustimmungHinweis}"/>
+                                            </StackPanel>
                                         </Border>
                                         <Border BorderThickness="2" CornerRadius="6" Padding="2"
                                                 BorderBrush="{x:Bind local:Darstellung.Hinweisrahmen(ViewModel.SeitenOffen), Mode=OneWay}">
@@ -528,6 +609,28 @@
                                                          Visibility="{x:Bind ViewModel.HatErstnote, Mode=OneWay}"
                                                          ToolTipService.ToolTip="Erstnote übernehmen und den Satz „Dem Erstgutachten schließe ich mich in Begründung und Ergebnis an.“ einfügen"/>
                                     </StackPanel>
+                                    <TextBlock Text="{x:Bind ViewModel.SchlusssatzVorschau, Mode=OneWay}" TextWrapping="Wrap" Opacity="0.75" FontStyle="Italic"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Visibility="{x:Bind local:Darstellung.Sichtbar(ViewModel.SchlusssatzVorschau), Mode=OneWay}"
+                                               ToolTipService.ToolTip="Schlusssatz im Gutachten (Platzhalter ###SCHLUSS###): nach Vergleich der Notenstufen von Erst- und Zweitgutachten"/>
+                                    <InfoBar IsOpen="{x:Bind ViewModel.UneingeschraenkteZustimmung, Mode=OneWay}" IsClosable="False" Severity="Informational"
+                                             Title="Uneingeschränkte Zustimmung" Message="{x:Bind ViewModel.ZustimmungHinweis}"/>
+                                    <InfoBar IsOpen="{x:Bind ViewModel.DrittgutachtenErforderlich, Mode=OneWay}" IsClosable="False" Severity="Warning"
+                                             Title="Drittgutachten erforderlich" Message="{x:Bind ViewModel.DrittgutachtenHinweis, Mode=OneWay}"/>
+                                    <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"
+                                                        Visibility="{x:Bind ViewModel.EinigungSichtbar, Mode=OneWay}">
+                                        <ComboBox Header="Einigungsnote" MinWidth="180" ItemsSource="{x:Bind ViewModel.EinigungsAuswahl}"
+                                                  SelectedIndex="{x:Bind ViewModel.EinigungsIndex, Mode=TwoWay}"
+                                                  ToolTipService.ToolTip="Mit dem Erstgutachter vereinbarte Note (erscheint im Vermerk und in der Notenliste)"/>
+                                        <CalendarDatePicker Header="Gespräch am" PlaceholderText="Datum" DateFormat="{}{day.integer}.{month.integer}.{year.full}"
+                                                            Date="{x:Bind ViewModel.Gespraechsdatum, Mode=TwoWay}"/>
+                                        <CheckBox Content="Erstgutachter hat zugestimmt" VerticalAlignment="Bottom" MinWidth="0"
+                                                  IsChecked="{x:Bind ViewModel.ErstgutachterZugestimmt, Mode=TwoWay}"/>
+                                    </controls:WrapPanel>
+                                    <TextBlock Text="{x:Bind ViewModel.VermerkText, Mode=OneWay}" TextWrapping="Wrap" FontStyle="Italic" Opacity="0.75"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Visibility="{x:Bind local:Darstellung.Sichtbar(ViewModel.VermerkText), Mode=OneWay}"
+                                               ToolTipService.ToolTip="Vermerk im Gutachten (Platzhalter ###VERMERK###, sonst am Ende des Textes)"/>
                                     <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.NoteAbweichend, Mode=OneWay}">
                                         <FontIcon FontSize="14" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
                                         <TextBlock Text="{x:Bind ViewModel.NotenHinweis, Mode=OneWay}" TextWrapping="Wrap" VerticalAlignment="Center"
@@ -544,6 +647,7 @@
                                                    VerticalAlignment="Center" Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                                    Style="{StaticResource CaptionTextBlockStyle}"/>
                                         <HyperlinkButton Content="Öffnen" Padding="4,0" Command="{x:Bind ViewModel.VorhandenesOeffnenCommand}"
+                                                         Visibility="{x:Bind ViewModel.KannVorhandenesOeffnen, Mode=OneWay}"
                                                          ToolTipService.ToolTip="Vorhandenes Gutachten zum Ändern öffnen"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -552,23 +656,30 @@
                             <Border x:Name="BewertungKarte" Grid.Column="1" Padding="14,10" CornerRadius="8" BorderThickness="1"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="Bewertung" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                              IsExpanded="{x:Bind ViewModel.KriterienAufgeklappt, Mode=TwoWay}">
-                                        <Expander.Header>
-                                            <StackPanel Padding="0,6">
+                                <StackPanel x:Name="BewertungInhalt" Spacing="8">
+                                    <!-- Formalkriterien: aufklappbar nur, wenn sie höher wären als die Karte „Arbeit“ (KriterienEinpassen) -->
+                                    <Button x:Name="KriterienKopf" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,6"
+                                            Visibility="Collapsed" Click="KriterienKopf_Click"
+                                            ToolTipService.ToolTip="Formalkriterien auf- bzw. zuklappen">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                                     <TextBlock Text="Formalkriterien"/>
                                                     <FontIcon FontSize="13" Glyph="&#xE7BA;" Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                                                              Visibility="{x:Bind ViewModel.GliederungOffen, Mode=OneWay}"
-                                                              ToolTipService.ToolTip="Zur Gliederung ist noch nichts angegeben"/>
+                                                              Visibility="{x:Bind ViewModel.PflichtkriterienOffen, Mode=OneWay}"
+                                                              ToolTipService.ToolTip="Zu einem Pflicht-Formalkriterium ist noch nichts angegeben"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{x:Bind ViewModel.KriterienZusammenfassung, Mode=OneWay}"
                                                            Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7"
                                                            TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                        </Expander.Header>
+                                            <FontIcon x:Name="KriterienPfeil" Grid.Column="1" FontSize="12" Glyph="&#xE70D;" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
                                         <ItemsControl x:Name="KriterienListe" ItemsSource="{x:Bind ViewModel.Kriterien}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
@@ -586,7 +697,6 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                    </Expander>
                                     <Grid ColumnSpacing="8" Visibility="{x:Bind ViewModel.HatSchema, Mode=OneWay}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -597,6 +707,14 @@
                                         <Button Grid.Column="1" Content="Rohpunkte" Click="RohpunkteReiter_Click"
                                                 ToolTipService.ToolTip="Zum Reiter „Rohpunkte“ (Strg+2)"/>
                                     </Grid>
+                                    <HyperlinkButton Padding="0" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"
+                                                     Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.HatSchema), Mode=OneWay}"
+                                                     ToolTipService.ToolTip="Kein Rohpunkteschema: im KI-Portal aus Sachverhalt und Lösung erzeugen lassen (Paket mit Rohpunkteschema, Bausteinen und Erwartungshorizont)">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon FontSize="14" Glyph="&#xE774;"/>
+                                            <TextBlock Text="Rohpunkteschema im Portal generieren lassen…"/>
+                                        </StackPanel>
+                                    </HyperlinkButton>
                                     <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.TeilpunkteSichtbar, Mode=OneWay}">
                                         <ItemsControl ItemsSource="{x:Bind ViewModel.Aufgaben}">
                                             <ItemsControl.ItemsPanel>
@@ -938,10 +1056,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*" MinHeight="120"/>
                             </Grid.RowDefinitions>
 
                             <Grid>
@@ -961,96 +1076,156 @@
                                 </Button>
                             </Grid>
 
-                            <!-- Fortschritt -->
-                            <StackPanel Grid.Row="1" Spacing="4">
-                                <TextBlock Text="{x:Bind ViewModel.FortschrittText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
-                                <ProgressBar Maximum="{x:Bind ViewModel.FortschrittMax, Mode=OneWay}" Value="{x:Bind ViewModel.Fortschritt, Mode=OneWay}"
-                                             Visibility="{x:Bind ViewModel.HatTeilnehmende, Mode=OneWay}"/>
-                            </StackPanel>
+                            <!-- Oberer Teil scrollbar (höchstens gut die Hälfte der Leiste), damit die Liste der Arbeiten sichtbar bleibt -->
+                            <ScrollViewer x:Name="ObenScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          Padding="0,0,10,0">
+                                <StackPanel Spacing="10">
+                                    <!-- Fortschritt -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{x:Bind ViewModel.FortschrittText, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}"/>
+                                        <ProgressBar Maximum="{x:Bind ViewModel.FortschrittMax, Mode=OneWay}" Value="{x:Bind ViewModel.Fortschritt, Mode=OneWay}"
+                                                     Visibility="{x:Bind ViewModel.HatTeilnehmende, Mode=OneWay}"/>
+                                    </StackPanel>
 
-                            <!-- Kennzahlen als Kacheln -->
-                            <ItemsControl Grid.Row="2" ItemsSource="{x:Bind ViewModel.Kennzahlen}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Kennzahl">
-                                        <Border Width="142" Padding="10,8" CornerRadius="6" BorderThickness="1"
-                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                                            <StackPanel>
-                                                <TextBlock Text="{x:Bind Wert}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{x:Bind Bezeichnung}" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.75" TextWrapping="Wrap"/>
+                                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8"
+                                              IsExpanded="{x:Bind ViewModel.StatistikOffen, Mode=TwoWay}">
+                                        <Expander.Header>
+                                            <TextBlock Text="Statistik" Padding="0,6"/>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="10">
+                                        <!-- Kennzahlen als Kacheln -->
+                                        <ItemsControl ItemsSource="{x:Bind ViewModel.Kennzahlen}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <controls:WrapPanel Orientation="Horizontal" HorizontalSpacing="8" VerticalSpacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:Kennzahl">
+                                                    <Border Width="142" Padding="10,8" CornerRadius="6" BorderThickness="1"
+                                                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{x:Bind Wert}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{x:Bind Bezeichnung}" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.75" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <!-- Notenverteilung mit Achse und Bestehensgrenze -->
+                                        <Grid HorizontalAlignment="Center"
+                                              ToolTipService.ToolTip="Notenverteilung 0–18 Punkte; gestrichelt: Bestehensgrenze (4 Punkte)">
+                                            <ItemsControl ItemsSource="{x:Bind ViewModel.Verteilung}" HorizontalAlignment="Left">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="2"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:VerteilungsBalken">
+                                                        <StackPanel Width="12" Spacing="2" ToolTipService.ToolTip="{x:Bind Hinweis}">
+                                                            <Grid Height="58">
+                                                                <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                                           Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="{x:Bind Bestanden}"/>
+                                                                <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                                           Fill="{ThemeResource SystemFillColorCriticalBrush}" Visibility="{x:Bind NichtBestanden}"/>
+                                                            </Grid>
+                                                            <TextBlock Text="{x:Bind Beschriftung}" FontSize="10" HorizontalAlignment="Center" Opacity="0.7"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Rectangle Height="1" VerticalAlignment="Top" Margin="0,58,0,0" HorizontalAlignment="Stretch"
+                                                       Fill="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                                            <Line X1="0" Y1="0" X2="0" Y2="60" Margin="55,0,0,0" HorizontalAlignment="Left"
+                                                  Stroke="{ThemeResource SystemFillColorCriticalBrush}" StrokeThickness="1" StrokeDashArray="2,2"/>
+                                        </Grid>
+
+                                            <!-- Abweichungen zum Erstgutachten (Zweitkorrektur) -->
+                                            <StackPanel Spacing="2" Visibility="{x:Bind ViewModel.HatAbweichungen, Mode=OneWay}"
+                                                        ToolTipService.ToolTip="Abweichung Zweit- minus Erstgutachten in Punkten; rot: Drittgutachten erforderlich (mehr als 3 Punkte)">
+                                                <TextBlock Text="Abweichung zum Erstgutachten (Punkte)" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.75"/>
+                                                <ItemsControl ItemsSource="{x:Bind ViewModel.Abweichungen}" HorizontalAlignment="Center">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="2"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:VerteilungsBalken">
+                                                            <StackPanel Width="18" Spacing="2" ToolTipService.ToolTip="{x:Bind Hinweis}">
+                                                                <Grid Height="40">
+                                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                                               Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="{x:Bind Bestanden}"/>
+                                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
+                                                                               Fill="{ThemeResource SystemFillColorCriticalBrush}" Visibility="{x:Bind NichtBestanden}"/>
+                                                                </Grid>
+                                                                <TextBlock Text="{x:Bind Beschriftung}" FontSize="10" HorizontalAlignment="Center" Opacity="0.7"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                        </StackPanel>
+                                    </Expander>
+                                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8"
+                                              IsExpanded="{x:Bind ViewModel.AktionenOffen, Mode=TwoWay}">
+                                        <Expander.Header>
+                                            <TextBlock Text="Teilnehmende, Drucken, Zweitkorrektur" Padding="0,6"/>
+                                        </Expander.Header>
+                                        <StackPanel Spacing="6">
+                                            <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}"
+                                                    ToolTipService.ToolTip="Excel- oder CSV-Datei mit Kennziffern bzw. Matrikelnummern (und Namen)">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon FontSize="16" Glyph="&#xE716;"/>
+                                                    <TextBlock Text="Teilnehmendenliste importieren…"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.KennziffernEingebenCommand}"
+                                                    ToolTipService.ToolTip="Kennziffern als Bereich (z. B. 1001-1060) oder Liste; nicht vergebene entfernen">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon FontSize="16" Glyph="&#xE8EF;"/>
+                                                    <TextBlock Text="Kennziffern eingeben…"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <TextBlock Text="{x:Bind ViewModel.TeilnehmendeHinweis, Mode=OneWay}" Opacity="0.7"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"/>
+                                            <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AlleDruckenCommand}"
+                                                    ToolTipService.ToolTip="Alle Gutachten der Klausur nacheinander auf dem Standarddrucker drucken">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon FontSize="16" Glyph="&#xE749;"/>
+                                                    <TextBlock Text="Alle Gutachten drucken…"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.ArbeitsdokumenteImportierenCommand}"
+                                            ToolTipService.ToolTip="Bearbeitungen und/oder Erstvoten (PDF, DOCX) als ZIP, Ordner oder Einzeldatei; Dateiname beginnt mit der Kennziffer">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon FontSize="16" Glyph="&#xE8B5;"/>
+                                            <TextBlock Text="Bearbeitungen/Erstvoten (ZIP)…"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.ZweitkorrekturAnlegenCommand}"
+                                                    Visibility="{x:Bind local:Darstellung.Nicht(ViewModel.Zweitkorrekturmodus), Mode=OneWay}"
+                                                    ToolTipService.ToolTip="Neuer Ordner „… - Zweitkorrektur“ mit Vorlage (Zweitgutachten), Bausteinen und Einstellungen; danach Teilnehmendenliste mit Erstnoten importieren">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon FontSize="16" Glyph="&#xE8C8;"/>
+                                                    <TextBlock Text="Zweitkorrektur anlegen…"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
 
-                            <!-- Notenverteilung mit Achse und Bestehensgrenze -->
-                            <Grid Grid.Row="3" HorizontalAlignment="Center"
-                                  ToolTipService.ToolTip="Notenverteilung 0–18 Punkte; gestrichelt: Bestehensgrenze (4 Punkte)">
-                                <ItemsControl ItemsSource="{x:Bind ViewModel.Verteilung}" HorizontalAlignment="Left">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="2"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:VerteilungsBalken">
-                                            <StackPanel Width="12" Spacing="2" ToolTipService.ToolTip="{x:Bind Hinweis}">
-                                                <Grid Height="58">
-                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
-                                                               Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="{x:Bind Bestanden}"/>
-                                                    <Rectangle VerticalAlignment="Bottom" Height="{x:Bind Hoehe}" RadiusX="2" RadiusY="2"
-                                                               Fill="{ThemeResource SystemFillColorCriticalBrush}" Visibility="{x:Bind NichtBestanden}"/>
-                                                </Grid>
-                                                <TextBlock Text="{x:Bind Beschriftung}" FontSize="10" HorizontalAlignment="Center" Opacity="0.7"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <Rectangle Height="1" VerticalAlignment="Top" Margin="0,58,0,0" HorizontalAlignment="Stretch"
-                                           Fill="{ThemeResource ControlStrokeColorDefaultBrush}"/>
-                                <Line X1="0" Y1="0" X2="0" Y2="60" Margin="55,0,0,0" HorizontalAlignment="Left"
-                                      Stroke="{ThemeResource SystemFillColorCriticalBrush}" StrokeThickness="1" StrokeDashArray="2,2"/>
-                            </Grid>
+                                    </Expander>
+                                </StackPanel>
+                            </ScrollViewer>
 
-                            <StackPanel Grid.Row="4" Spacing="6">
-                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.TeilnehmendeImportierenCommand}"
-                                        ToolTipService.ToolTip="Excel- oder CSV-Datei mit Kennziffern bzw. Matrikelnummern (und Namen)">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontSize="16" Glyph="&#xE716;"/>
-                                        <TextBlock Text="Teilnehmendenliste importieren…"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.KennziffernEingebenCommand}"
-                                        ToolTipService.ToolTip="Kennziffern als Bereich (z. B. 1001-1060) oder Liste; nicht vergebene entfernen">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontSize="16" Glyph="&#xE8EF;"/>
-                                        <TextBlock Text="Kennziffern eingeben…"/>
-                                    </StackPanel>
-                                </Button>
-                                <TextBlock Text="{x:Bind ViewModel.TeilnehmendeHinweis, Mode=OneWay}" Opacity="0.7"
-                                           Style="{StaticResource CaptionTextBlockStyle}"/>
-                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AlleDruckenCommand}"
-                                        ToolTipService.ToolTip="Alle Gutachten der Klausur nacheinander auf dem Standarddrucker drucken">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontSize="16" Glyph="&#xE749;"/>
-                                        <TextBlock Text="Alle Gutachten drucken…"/>
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-
-                            <SelectorBar x:Name="Filter" Grid.Row="5" SelectionChanged="Filter_SelectionChanged">
+                            <SelectorBar x:Name="Filter" Grid.Row="2" SelectionChanged="Filter_SelectionChanged">
                                 <SelectorBarItem Text="Alle" IsSelected="True"/>
                                 <SelectorBarItem Text="Offen"/>
                                 <SelectorBarItem Text="Bewertet"/>
                             </SelectorBar>
 
-                            <ListView x:Name="Eintraege" Grid.Row="6" ItemsSource="{x:Bind ViewModel.Eintraege}"
+                            <ListView x:Name="Eintraege" Grid.Row="3" ItemsSource="{x:Bind ViewModel.Eintraege}"
                                       SelectionMode="None" IsItemClickEnabled="True" ItemClick="Eintraege_ItemClick"
                                       ToolTipService.ToolTip="Klick: bewertete Arbeit ändern bzw. offene Kennung übernehmen">
                                 <ListView.ItemTemplate>

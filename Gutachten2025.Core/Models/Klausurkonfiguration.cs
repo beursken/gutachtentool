@@ -14,6 +14,12 @@ public sealed class Formalkriterium
     public string Vorlage { get; set; } = "{subjekt} {wert}.";
 
     public List<string> Stufen { get; set; } = new();
+
+    /// <summary>Pflichtangabe (Hervorhebung und Nachfrage vor dem Erstellen). null (ältere Klausur.json): nur „Gliederung“.</summary>
+    public bool? Pflicht { get; set; }
+
+    [JsonIgnore]
+    public bool IstPflicht => Pflicht ?? Name.Contains("Gliederung", StringComparison.CurrentCultureIgnoreCase);
 }
 
 /// <summary>Eine Aufgabe mit Höchstpunktzahl (Rohpunkte) für die Teilpunktevergabe.</summary>
@@ -42,6 +48,9 @@ public sealed class Klausurkonfiguration
     /// (fehlt der Wert in Klausur.json, bleibt es bei an).
     /// </summary>
     public bool GliederungFett { get; set; } = true;
+
+    /// <summary>Klausurordner einer Zweitkorrektur (Zweitkorrekturmodus auch ohne Erstnoten).</summary>
+    public bool Zweitkorrektur { get; set; }
 
     public List<Aufgabe> Aufgaben { get; set; } = new();
 

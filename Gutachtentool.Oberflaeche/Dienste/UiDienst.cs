@@ -320,6 +320,10 @@ public sealed class UiDienst : IUiService
     /// <summary>Drucken über Word gibt es nur unter Windows (die Schaltfläche fehlt hier).</summary>
     public bool Drucken(string pfad) => false;
 
+    public Task<Druckstand?> DruckerAbfragenAsync() => Task.FromResult<Druckstand?>(null);
+
+    public bool ScannenStarten() => false;
+
     public Task<bool> AlsPdfSpeichernAsync(string docx, string pdf) => _plattform.AlsPdfSpeichernAsync(docx, pdf);
 
     public void Fokussieren(Eingabefeld feld)

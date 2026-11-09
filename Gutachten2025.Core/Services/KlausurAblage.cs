@@ -49,6 +49,7 @@ public sealed class KlausurAblage
         }
         string konfiguration = Path.Combine(VorlagenOrdner, Konfiguration);
         if (!File.Exists(konfiguration)) KlausurKonfigDatei.Speichern(konfiguration, Models.Klausurkonfiguration.Standard());
+        Beispielbausteine.VorlageAktualisieren(VorlagenOrdner); // neue Klausuren beginnen ohne Beispielbausteine
         return fehlend;
     }
 

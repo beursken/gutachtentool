@@ -53,6 +53,7 @@ public static class KlausurKonfigDatei
                 Name = f.Name.Trim(),
                 Vorlage = string.IsNullOrWhiteSpace(f.Vorlage) ? "{subjekt} {wert}." : f.Vorlage.Trim(),
                 Stufen = (f.Stufen ?? new()).Select(s => s.Trim()).Where(s => s.Length > 0).ToList(),
+                Pflicht = f.Pflicht,
             }).ToList();
         if (k.Notenschluessel is { Count: not 18 }) k.Notenschluessel = null;
         return k;
@@ -87,13 +88,13 @@ public static class KlausurKonfigDatei
         var sb = new StringBuilder();
         foreach (Formalkriterium f in k.Formalkriterien)
         {
-            sb.Append('+').Append(f.Name).Append(" | ").AppendLine(f.Vorlage);
+            sb.Append('+').Append(f.IstPflicht ? "!" : string.Empty).Append(f.Name).Append(" | ").AppendLine(f.Vorlage);
             foreach (string s in f.Stufen) sb.AppendLine(s);
         }
         return sb.ToString().TrimEnd();
     }
 
-    /// <summary>„+Name | Satzvorlage“, darunter je Zeile eine Stufe.</summary>
+    /// <summary>„+Name | Satzvorlage“ („+!Name“ = Pflichtangabe), darunter je Zeile eine Stufe.</summary>
     public static List<Formalkriterium> KriterienLesen(string text)
     {
         var liste = new List<Formalkriterium>();
@@ -102,7 +103,9 @@ public static class KlausurKonfigDatei
         {
             if (zeile.StartsWith('+'))
             {
-                string kopf = zeile[1..];
+                string kopf = zeile[1..].TrimStart();
+                bool pflicht = kopf.StartsWith('!');
+                if (pflicht) kopf = kopf[1..];
                 int i = kopf.IndexOf('|');
                 string name = (i >= 0 ? kopf[..i] : kopf).Trim();
                 string vorlage = i >= 0 ? kopf[(i + 1)..].Trim() : "{subjekt} {wert}.";
@@ -111,7 +114,7 @@ public static class KlausurKonfigDatei
                     throw new FormatException($"Formalkriterien: Die Satzvorlage für „{name}“ muss {{wert}} enthalten.");
                 if (liste.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)))
                     throw new FormatException($"Formalkriterien: „{name}“ ist doppelt.");
-                aktuell = new Formalkriterium { Name = name, Vorlage = vorlage.Length > 0 ? vorlage : "{subjekt} {wert}." };
+                aktuell = new Formalkriterium { Name = name, Vorlage = vorlage.Length > 0 ? vorlage : "{subjekt} {wert}.", Pflicht = pflicht };
                 liste.Add(aktuell);
             }
             else if (aktuell is null)

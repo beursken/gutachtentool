@@ -52,6 +52,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
         EditorFormatieren();
         BedienungEinrichten();
         NormenEinrichten();
+        AnpassungEinrichten();
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.Initialisieren();
         KlausurAuswahlSetzen();
@@ -198,6 +199,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
                 VorschlagVerbergen();
                 break;
             case nameof(MainViewModel.UnterlagenHtml):
+            case nameof(MainViewModel.UnterlagenPdf):
                 if (_geladen) UnterlagenZeichnen();
                 break;
             case nameof(MainViewModel.HatSchema):
@@ -609,6 +611,32 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
             EinstellungsSpeicher.Protokollieren(ex);
             return false;
         }
+    }
+
+    public Task<Druckstand?> DruckerAbfragenAsync() => Task.Run(Druckwarteschlange.Abfragen);
+
+    /// <summary>Windows Scan (Store-App), ersatzweise Windows-Fax und -Scan.</summary>
+    public bool ScannenStarten()
+    {
+        try
+        {
+            string wfs = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WFS.exe");
+            if (System.IO.Directory.Exists(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", "Microsoft.WindowsScan_8wekyb3d8bbwe")))
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", @"shell:AppsFolder\Microsoft.WindowsScan_8wekyb3d8bbwe!App") { UseShellExecute = true });
+                return true;
+            }
+            if (System.IO.File.Exists(wfs))
+            {
+                Process.Start(new ProcessStartInfo(wfs) { UseShellExecute = true });
+                return true;
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
+        return false;
     }
 
     Control GutachtenReiter()

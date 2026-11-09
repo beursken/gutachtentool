@@ -54,6 +54,7 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(ErstnoteAbweichend));
         OnPropertyChanged(nameof(ErstnoteText));
         OnPropertyChanged(nameof(ErstnoteSichtbar));
+        ZweitkorrekturAktualisieren();
     }
 
     /// <summary>Zusatzspalten der Notenliste (nur wenn die Klausur Erstnoten hat; leer, wenn die Kennziffer fehlt).</summary>
@@ -61,6 +62,10 @@ public sealed partial class MainViewModel
     {
         if (!HatErstnoten) return new();
         int? e = Erstnote;
-        return new() { ("Erstgutachten", e), ("Differenz", e is int x ? punkte - x : null) };
+        return new()
+        {
+            ("Erstgutachten", e), ("Differenz", e is int x ? punkte - x : null),
+            ("Einigungsnote", EinigungVollstaendig ? Einigungsnote : null),
+        };
     }
 }

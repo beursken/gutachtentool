@@ -83,5 +83,28 @@ public static class Erstnoten
         return neu;
     }
 
+    /// <summary>
+    /// Schreibt Erstnoten.json (z. B. aus einer importierten Teilnehmendenliste mit Noten); nur Kennziffern bzw.
+    /// Matrikelnummern, Namen werden übergangen. Liefert die Zahl der gespeicherten Einträge.
+    /// </summary>
+    public static int Speichern(string klausurOrdner, IReadOnlyDictionary<string, int> noten)
+    {
+        List<Erstnote> liste = noten
+            .Where(n => IstKennziffer(n.Key) && Notenskala.IstGueltig(n.Value))
+            .Select(n => new Erstnote { Kennung = n.Key.Trim(), Punkte = n.Value })
+            .OrderBy(e => e.Kennung, KlausurAblage.NatuerlicheReihenfolge)
+            .ToList();
+        string pfad = Path.Combine(klausurOrdner, Datei);
+        if (liste.Count == 0)
+        {
+            if (File.Exists(pfad)) File.Delete(pfad);
+            return 0;
+        }
+        string tmp = pfad + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(liste, KlausurKonfigDatei.Json), new UTF8Encoding(false));
+        File.Move(tmp, pfad, overwrite: true);
+        return liste.Count;
+    }
+
     static string Kurz(string s) => s.Length <= 30 ? s : s[..29] + "…";
 }

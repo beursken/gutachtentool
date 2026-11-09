@@ -74,6 +74,12 @@ public sealed class GutachtenEntwurf
     /// <summary>Fingerabdruck des Rohpunkteschemas bei der Bewertung.</summary>
     public string? Schema { get; set; }
     public string Rtf { get; set; } = string.Empty;
+    /// <summary>Zweitgutachten: uneingeschränkte Zustimmung (statt des Entwurfs der Zustimmungstext).</summary>
+    public bool Zustimmung { get; set; }
+    /// <summary>Zweitgutachten: mit dem Erstgutachter vereinbarte Note (Abweichung über 3 Punkte); null = keine.</summary>
+    public int? Einigungsnote { get; set; }
+    public DateTime? Gespraechsdatum { get; set; }
+    public bool ErstgutachterZugestimmt { get; set; }
     public DateTime Stand { get; set; } = DateTime.Now;
 }
 
@@ -97,7 +103,9 @@ public sealed class UebersichtEintrag
     public string Zeit { get; init; } = string.Empty;
     /// <summary>Erstnote (Zweitgutachten), z. B. „Erstgutachten 9“.</summary>
     public string Erstnote { get; init; } = string.Empty;
-    public string Zusatz => string.Join(" · ", new[] { Erstnote, Zeit }.Where(s => s.Length > 0));
+    /// <summary>Druckstatus aus dem Druckprotokoll („gedruckt 09.11. 13:05“, „⚠ Druckfehler“).</summary>
+    public string Druck { get; init; } = string.Empty;
+    public string Zusatz => string.Join(" · ", new[] { Erstnote, Zeit, Druck }.Where(s => s.Length > 0));
     public bool HatZusatz => Zusatz.Length > 0;
     public bool IstOffen => Punkte is null;
     public string Anzeige => Name.Length > 0 && Name != Kennung ? $"{Kennung} – {Name}" : Kennung;
@@ -109,6 +117,17 @@ public sealed class UebersichtEintrag
 }
 
 public sealed record Kennzahl(string Bezeichnung, string Wert);
+
+/// <summary>Balken der Abweichungsverteilung (Zweit- minus Erstnote; Ränder zusammengefasst).</summary>
+public sealed record AbweichungsBalken(int Differenz, int Anzahl, double Hoehe, bool Rand)
+{
+    string Text => (Differenz > 0 ? "+" : string.Empty) + Differenz.ToString(CultureInfo.CurrentCulture);
+    public string Hinweis => $"{(Rand ? (Differenz < 0 ? "≤ " : "≥ ") : string.Empty)}{Text} Punkte: {Anzahl}";
+    public string Beschriftung => Differenz % 2 == 0 ? Text : string.Empty;
+    /// <summary>Innerhalb der Toleranz (höchstens 3 Punkte) bzw. Drittgutachten erforderlich.</summary>
+    public bool Bestanden => Math.Abs(Differenz) <= 3;
+    public bool NichtBestanden => !Bestanden;
+}
 
 public sealed record VerteilungsBalken(int Punkte, int Anzahl, double Hoehe)
 {

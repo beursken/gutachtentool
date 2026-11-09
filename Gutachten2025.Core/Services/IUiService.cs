@@ -37,6 +37,12 @@ public interface IUiService
     /// <summary>Druckt eine Datei über das zugeordnete Programm (Word) auf dem Standarddrucker; false bei Fehler.</summary>
     bool Drucken(string pfad);
 
+    /// <summary>Zustand der Warteschlange des Standarddruckers; null = nicht abfragbar (dann ohne Überwachung drucken).</summary>
+    Task<Druckstand?> DruckerAbfragenAsync();
+
+    /// <summary>Startet die Scan-App des Systems (Windows Scan bzw. Windows-Fax und -Scan); false = nicht verfügbar.</summary>
+    bool ScannenStarten();
+
     void Fokussieren(Eingabefeld feld);
 
     /// <summary>Wechselt zum Reiter „Rohpunkte“.</summary>

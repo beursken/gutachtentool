@@ -35,7 +35,13 @@ public static class Teilnehmerliste
         File.Move(tmp, pfad, overwrite: true);
     }
 
-    public static List<Teilnehmer> Importieren(string quelle)
+    public static List<Teilnehmer> Importieren(string quelle) => ImportierenMitNoten(quelle).Teilnehmende;
+
+    /// <summary>
+    /// Import samt Noten des Erstgutachtens, falls die Datei eine Notenspalte hat (Überschrift „Note“, „Punkte“,
+    /// „Erstnote“, „Erstgutachten“ … bzw. ohne Überschrift eine Spalte nur mit Punktwerten 0–18).
+    /// </summary>
+    public static Teilnehmerimport ImportierenMitNoten(string quelle)
     {
         string endung = Path.GetExtension(quelle).ToLowerInvariant();
         List<string[]> zeilen = endung switch
@@ -45,6 +51,13 @@ public static class Teilnehmerliste
             _ => throw new InvalidDataException("Bitte eine Excel-Datei (.xlsx) oder eine Textdatei (.csv, .txt) wählen."),
         };
         return Auswerten(zeilen);
+    }
+
+    /// <summary>„12“, „12,0“, „12 P.“, „12 Punkte“ → 12; sonst null.</summary>
+    public static int? Punktwert(string s)
+    {
+        Match m = Regex.Match(s ?? string.Empty, @"^\s*(\d{1,2})(?:[.,]0+)?\s*(?:P\.?|Pkt\.?|Punkte?)?\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return m.Success && int.TryParse(m.Groups[1].Value, out int p) && Notenskala.IstGueltig(p) ? p : null;
     }
 
     static List<string[]> AusExcel(string pfad)
@@ -89,10 +102,10 @@ public static class Teilnehmerliste
         return s.Trim();
     }
 
-    static List<Teilnehmer> Auswerten(List<string[]> zeilen)
+    static Teilnehmerimport Auswerten(List<string[]> zeilen)
     {
         int kopf = zeilen.FindIndex(z => z.Any(IstKennungsKopf) || z.Any(IstNamensKopf));
-        int kennung = 0, name = -1, vorname = -1, nachname = -1, start = 0;
+        int kennung = 0, name = -1, vorname = -1, nachname = -1, note = -1, start = 0;
         if (kopf >= 0 && kopf < 5)
         {
             string[] k = zeilen[kopf].Select(s => s.ToLowerInvariant()).ToArray();
@@ -101,11 +114,16 @@ public static class Teilnehmerliste
             vorname = Array.FindIndex(k, s => s.Contains("vorname"));
             nachname = Array.FindIndex(k, s => s.Contains("nachname") || s.Contains("familienname"));
             name = Array.FindIndex(k, s => IstNamensKopf(s) && !s.Contains("vorname") && !s.Contains("nachname") && !s.Contains("familienname"));
+            note = Array.FindIndex(k, IstNotenKopf);
             if (kennung < 0) throw new InvalidDataException("Keine Spalte mit Kennziffer bzw. Matrikelnummer gefunden (Überschrift z. B. „Kennziffer“ oder „Matrikel“).");
             start = kopf + 1;
         }
 
+        // Ohne Überschrift: letzte Spalte (nach der Kennung), deren Einträge durchweg Punktwerte sind.
+        if (start == 0 && note < 0) note = NotenspalteErkennen(zeilen, kennung);
+
         var liste = new List<Teilnehmer>();
+        var noten = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var gesehen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string[] z in zeilen.Skip(start))
         {
@@ -114,11 +132,30 @@ public static class Teilnehmerliste
             string n;
             if (vorname >= 0 || nachname >= 0) n = $"{Spalte(z, vorname)} {Spalte(z, nachname)}".Trim();
             else if (name >= 0) n = Spalte(z, name);
-            else n = start > 0 ? string.Empty : string.Join(" ", z.Skip(kennung + 1).Where(s => s.Length > 0));
+            else n = start > 0 ? string.Empty : string.Join(" ", z.Skip(kennung + 1).Where((s, i) => s.Length > 0 && i + kennung + 1 != note));
             liste.Add(new Teilnehmer { Kennung = k, Name = n });
+            if (note >= 0 && Punktwert(Spalte(z, note)) is int p) noten[k] = p;
         }
         if (liste.Count == 0) throw new InvalidDataException("Die Datei enthält keine Kennungen.");
-        return liste;
+        return new Teilnehmerimport(liste, noten);
+    }
+
+    static int NotenspalteErkennen(List<string[]> zeilen, int kennung)
+    {
+        int breite = zeilen.Count == 0 ? 0 : zeilen.Max(z => z.Length);
+        for (int s = breite - 1; s >= 0; s--)
+        {
+            if (s == kennung) continue;
+            var werte = zeilen.Select(z => Spalte(z, s)).Where(w => w.Length > 0).ToList();
+            if (werte.Count > 0 && werte.Count(w => Punktwert(w) is not null) >= Math.Max(1, (int)Math.Ceiling(werte.Count * 0.9))) return s;
+        }
+        return -1;
+    }
+
+    static bool IstNotenKopf(string s)
+    {
+        s = s.ToLowerInvariant().Trim();
+        return Regex.IsMatch(s, @"^(erst)?(note|noten|punkte|punktzahl|bewertung|ergebnis)\b|erstgutachten|erstkorrektur|erstvotum|erstnote", RegexOptions.CultureInvariant);
     }
 
     static string Spalte(string[] z, int i) => i >= 0 && i < z.Length ? z[i].Trim() : string.Empty;
@@ -132,3 +169,6 @@ public static class Teilnehmerliste
     static bool IstNamensKopf(string s) =>
         Regex.IsMatch(s, @"^\s*(vor|nach|familien|ruf)?namen?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 }
+
+/// <summary>Ergebnis des Imports: Teilnehmende und – falls vorhanden – die Noten des Erstgutachtens je Kennung.</summary>
+public sealed record Teilnehmerimport(List<Teilnehmer> Teilnehmende, Dictionary<string, int> Noten);

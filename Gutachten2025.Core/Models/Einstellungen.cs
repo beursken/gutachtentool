@@ -72,4 +72,12 @@ public sealed class Einstellungen
     public bool AngabenHervorheben { get; set; } = true;
     /// <summary>Note der laufenden Arbeit gewählt; null (ältere Einstellungen): gilt als gewählt, wenn sie von der Vorgabe abweicht.</summary>
     public bool? NoteGesetzt { get; set; }
+    /// <summary>Zweitgutachten der laufenden Arbeit: uneingeschränkte Zustimmung.</summary>
+    public bool Zustimmung { get; set; }
+    public int? Einigungsnote { get; set; }
+    public DateTime? Gespraechsdatum { get; set; }
+    public bool ErstgutachterZugestimmt { get; set; }
+    /// <summary>Übersicht: Bereiche „Statistik“ und „Aktionen“ aufgeklappt.</summary>
+    public bool StatistikOffen { get; set; } = true;
+    public bool AktionenOffen { get; set; } = true;
 }

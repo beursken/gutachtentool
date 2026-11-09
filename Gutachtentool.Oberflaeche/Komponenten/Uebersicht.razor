@@ -7,37 +7,56 @@
         <button class="knopf leise" title="Neu einlesen" @onclick="Aktualisieren">⟳</button>
     </div>
 
-    @if (Vm.Kennzahlen.Count > 0)
-    {
-        <dl class="kennzahlen">
-            @foreach (Kennzahl k in Vm.Kennzahlen)
-            {
-                <dt>@k.Bezeichnung</dt>
-                <dd>@k.Wert</dd>
-            }
-        </dl>
-    }
+    <div class="oben">
+        @if (Vm.FortschrittText is { } fortschritt)
+        {
+            <div class="fortschritt">
+                <progress max="@Zahl(Vm.FortschrittMax)" value="@Zahl(Vm.Fortschritt)"></progress>
+                <span>@fortschritt</span>
+            </div>
+        }
 
-    @if (Vm.Verteilung.Count > 0)
-    {
-        <div class="verteilung" aria-label="Notenverteilung">
-            @foreach (VerteilungsBalken b in Vm.Verteilung)
+        <details open>
+            <summary>Statistik</summary>
+            @if (Vm.Kennzahlen.Count > 0)
             {
-                <div class="balken" title="@b.Hinweis">
-                    <div class="saeule @(b.Bestanden ? "bestanden" : "nicht")" style="height:@Px(b.Hoehe)"></div>
-                    <div class="beschriftung">@b.Beschriftung</div>
+                <dl class="kennzahlen">
+                    @foreach (Kennzahl k in Vm.Kennzahlen)
+                    {
+                        <dt>@k.Bezeichnung</dt>
+                        <dd>@k.Wert</dd>
+                    }
+                </dl>
+            }
+
+            @if (Vm.Verteilung.Count > 0)
+            {
+                <div class="verteilung" aria-label="Notenverteilung">
+                    @foreach (VerteilungsBalken b in Vm.Verteilung)
+                    {
+                        <div class="balken" title="@b.Hinweis">
+                            <div class="saeule @(b.Bestanden ? "bestanden" : "nicht")" style="height:@Px(b.Hoehe)"></div>
+                            <div class="beschriftung">@b.Beschriftung</div>
+                        </div>
+                    }
                 </div>
             }
-        </div>
-    }
 
-    @if (Vm.FortschrittText is { } fortschritt)
-    {
-        <div class="fortschritt">
-            <progress max="@Zahl(Vm.FortschrittMax)" value="@Zahl(Vm.Fortschritt)"></progress>
-            <span>@fortschritt</span>
-        </div>
-    }
+            @if (Vm.HatAbweichungen)
+            {
+                <div class="klein abstand-links" title="Abweichung Zweit- minus Erstgutachten in Punkten; rot: Drittgutachten erforderlich (mehr als 3 Punkte)">Abweichung zum Erstgutachten</div>
+                <div class="verteilung" aria-label="Abweichungen zum Erstgutachten">
+                    @foreach (AbweichungsBalken b in Vm.Abweichungen)
+                    {
+                        <div class="balken" title="@b.Hinweis">
+                            <div class="saeule @(b.Bestanden ? "bestanden" : "nicht")" style="height:@Px(b.Hoehe)"></div>
+                            <div class="beschriftung">@b.Beschriftung</div>
+                        </div>
+                    }
+                </div>
+            }
+        </details>
+    </div>
 
     <div class="leiste">
         <select value="@Vm.UebersichtFilter" @onchange="e => Vm.UebersichtFilter = int.Parse((string)e.Value!, CultureInfo.InvariantCulture)" aria-label="Filter">

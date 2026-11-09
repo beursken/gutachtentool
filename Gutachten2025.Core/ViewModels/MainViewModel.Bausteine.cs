@@ -39,6 +39,32 @@ public sealed partial class MainViewModel
     /// <summary>Leerer Zustand: Klausur ohne Bausteine.</summary>
     public bool KeineBausteine => Umsortierbar && Bausteine.Count == 0 && !KeineKlausur;
 
+    /// <summary>Die Klausur enthält noch die früher mitgelieferten Beispielbausteine.</summary>
+    [ObservableProperty] public partial bool BausteineSindBeispiele { get; set; }
+
+    /// <summary>Beispielbausteine entfernen (Sicherung bleibt im Klausurordner); danach erscheinen die Knöpfe zum Erzeugen.</summary>
+    [RelayCommand]
+    async Task BeispieleEntfernenAsync()
+    {
+        try
+        {
+            if (KlausurOrdnerOderMeldung() is null) return;
+            if (!await _ui.BestaetigenAsync("Beispielbausteine entfernen",
+                    "Die mitgelieferten Beispielbausteine dieser Klausur werden entfernt (eine Sicherung bleibt im Klausurordner). " +
+                    "Anschließend lassen sich Bausteine im KI-Portal generieren oder in einer eigenen Text-Datei anlegen.",
+                    "Entfernen", "Abbrechen"))
+                return;
+            _bausteineGeaendert = false; // Beispiele nicht zurückschreiben
+            Beispielbausteine.Leeren(_ablage.TextePfad(KlausurName));
+            BausteineLaden();
+            OnPropertyChanged(nameof(KeineBausteine));
+        }
+        catch (Exception ex)
+        {
+            Fehler(ex, "Beispielbausteine nicht entfernt");
+        }
+    }
+
     /// <summary>Suche ohne Treffer.</summary>
     public bool KeineTreffer => !Umsortierbar && Treffer.Count == 0;
 
@@ -58,6 +84,7 @@ public sealed partial class MainViewModel
         _bausteinStand = File.Exists(_bausteinPfad) ? File.GetLastWriteTimeUtc(_bausteinPfad) : DateTime.MinValue;
         _bausteineGeladen = true;
         _bausteineGeaendert = false;
+        BausteineSindBeispiele = Bausteine.Count > 0 && Beispielbausteine.SindBeispiele(Bausteine);
         PassendAktualisieren();
         TrefferAktualisieren();
         NutzungAnwenden();

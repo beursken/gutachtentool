@@ -70,6 +70,49 @@ public sealed class GutachtenService
         }
     }
 
+    /// <summary>
+    /// Ersetzt Wörter bzw. Wendungen in einer Word-Datei (Text, Kopf- und Fußzeilen), auch über mehrere Runs hinweg;
+    /// liefert die Zahl der Ersetzungen je Suchtext. Die Datei wird nur geschrieben, wenn sich etwas ändert.
+    /// </summary>
+    public Dictionary<string, int> TexteErsetzen(string docx, IReadOnlyList<(string Alt, string Neu)> ersetzungen)
+    {
+        var zahl = ersetzungen.ToDictionary(e => e.Alt, _ => 0, StringComparer.Ordinal);
+        File.SetAttributes(docx, FileAttributes.Normal);
+        using WordprocessingDocument doc = WordprocessingDocument.Open(docx, true);
+        MainDocumentPart main = doc.MainDocumentPart ?? throw new InvalidDataException("Die Word-Vorlage enthält kein Dokument.");
+        foreach (OpenXmlElement wurzel in Bereiche(main).ToList())
+            foreach (var (alt, neu) in ersetzungen)
+            {
+                if (alt.Length == 0 || neu.Contains(alt, StringComparison.Ordinal)) continue; // sonst Endlosschleife
+                int vorher = Absaetze(wurzel).Sum(p => Vorkommen(Inhalt(p), alt));
+                if (vorher == 0) continue;
+                Ersetzen(wurzel, alt, neu);
+                zahl[alt] += vorher;
+            }
+        if (zahl.Values.Any(z => z > 0))
+        {
+            main.Document?.Save();
+            foreach (HeaderPart h in main.HeaderParts) h.Header?.Save();
+            foreach (FooterPart f in main.FooterParts) f.Footer?.Save();
+        }
+        return zahl;
+    }
+
+    /// <summary>Enthält die Word-Vorlage (Text, Kopf- oder Fußzeilen) die Marke?</summary>
+    public static bool EnthaeltMarke(string docx, string marke)
+    {
+        using var fs = new FileStream(docx, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using WordprocessingDocument doc = WordprocessingDocument.Open(fs, false);
+        return doc.MainDocumentPart is { } main && Bereiche(main).Any(w => Absaetze(w).Any(p => Inhalt(p).Contains(marke, StringComparison.Ordinal)));
+    }
+
+    static int Vorkommen(string text, string teil)
+    {
+        int n = 0;
+        for (int i = text.IndexOf(teil, StringComparison.Ordinal); i >= 0; i = text.IndexOf(teil, i + teil.Length, StringComparison.Ordinal)) n++;
+        return n;
+    }
+
     static IEnumerable<OpenXmlElement> Bereiche(MainDocumentPart main)
     {
         if (main.Document?.Body is { } b) yield return b;

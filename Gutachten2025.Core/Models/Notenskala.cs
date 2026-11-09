@@ -23,6 +23,18 @@ public static class Notenskala
         _ => "ungenügend",
     };
 
+    /// <summary>Notenstufe 0 (ungenügend) bis 6 (sehr gut) – zum Vergleich von Erst- und Zweitgutachten.</summary>
+    public static int Stufe(int punkte) => punkte switch
+    {
+        >= 16 => 6,
+        >= 13 => 5,
+        >= 10 => 4,
+        >= 7 => 3,
+        >= 4 => 2,
+        >= 1 => 1,
+        _ => 0,
+    };
+
     public static string Definition(int punkte) => punkte switch
     {
         >= 16 => "eine besonders hervorragende Leistung.",

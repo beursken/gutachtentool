@@ -79,17 +79,7 @@ public sealed partial class MainViewModel
                 yield return new Kennzahl("Restzeit (Prognose)", $"ca. {Korrekturzeiten.Text(TimeSpan.FromSeconds(median.TotalSeconds * offen))} für {offen} Arbeiten");
         }
         if (HatErstnoten)
-        {
-            List<int> diff = noten.Where(n => _erstnoten.ContainsKey(n.Key)).Select(n => n.Value - _erstnoten[n.Key]).ToList();
-            if (diff.Count > 0)
-            {
-                double mittel = diff.Average(), betrag = diff.Average(d => Math.Abs(d));
-                int gross = diff.Count(d => Math.Abs(d) >= Erstnoten.Warnschwelle);
-                yield return new Kennzahl("Abweichung zum Erstgutachten",
-                    $"Ø {mittel.ToString("+0.0;−0.0;0.0", System.Globalization.CultureInfo.GetCultureInfo("de-DE"))} Punkte (Betrag {Zahl.Text(Math.Round(betrag, 1))})");
-                yield return new Kennzahl("Übereinstimmend / ab 4 Punkten", $"{diff.Count(d => d == 0)} / {gross} von {diff.Count}");
-            }
-        }
+            foreach (Kennzahl k in ZweitkorrekturKennzahlen(noten)) yield return k;
     }
 
     // ---------- Kennziffern ----------

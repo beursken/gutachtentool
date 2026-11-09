@@ -359,6 +359,13 @@ window.gutachtentool = (() => {
             setTimeout(() => ziel.classList.remove('angesprungen'), 2000);
             return true;
         },
+        /** PDF (Bearbeitung/Erstvotum) als Blob-Adresse für das iframe der Leiste. */
+        pdfAdresse(bytes) {
+            return URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        },
+        adresseFreigeben(adresse) {
+            if (adresse) URL.revokeObjectURL(adresse);
+        },
         /** Gezeigte Norm in den Blick: hervorgehobene Stelle, sonst Überschrift, die mit dem Zitat beginnt. */
         normZeigen(zitat, nurUeberschrift) {
             const wurzel = document.querySelector('.unterlage');

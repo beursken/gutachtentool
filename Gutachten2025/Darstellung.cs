@@ -18,6 +18,18 @@ public static class Darstellung
     static Microsoft.UI.Xaml.Media.Brush? _warnung;
     static readonly Microsoft.UI.Xaml.Media.SolidColorBrush Durchsichtig = new(Microsoft.UI.Colors.Transparent);
 
+    /// <summary>Text vorhanden → sichtbar.</summary>
+    public static Visibility Sichtbar(string? text) => string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>Karte „Arbeit“: im Zweitkorrekturmodus in Akzentfarbe umrandet.</summary>
+    public static Microsoft.UI.Xaml.Media.Brush Modusrahmen(bool zweitkorrektur) =>
+        Application.Current.Resources.TryGetValue(zweitkorrektur ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush", out object? b)
+        && b is Microsoft.UI.Xaml.Media.Brush pinsel
+            ? pinsel
+            : Durchsichtig;
+
+    public static Thickness Modusdicke(bool zweitkorrektur) => new(zweitkorrektur ? 2 : 1);
+
     /// <summary>Rahmen um Pflichtangaben ohne Eingabe (Warnfarbe des Themas), sonst unsichtbar.</summary>
     public static Microsoft.UI.Xaml.Media.Brush Hinweisrahmen(bool offen) =>
         offen

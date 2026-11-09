@@ -86,7 +86,7 @@ public sealed partial class MainViewModel : ObservableObject
     public string KennungsBezeichnung => Anonym ? "Kennziffer" : "Name";
     public string Ablageordner => _ablage.Wurzel;
 
-    string Kennung => (Anonym ? Student : Matrikel).Trim();
+    public string Kennung => (Anonym ? Student : Matrikel).Trim();
 
     int SeitenZahl => double.IsNaN(Seiten) || Seiten < 0 ? 0 : (int)Math.Round(Seiten);
 
@@ -114,6 +114,9 @@ public sealed partial class MainViewModel : ObservableObject
         }
         if (e.PropertyName is nameof(Student) or nameof(Matrikel) or nameof(Anonym) or nameof(BearbeiteteKennung) or nameof(KlausurName))
             KennungPruefen();
+        // Bearbeitung bzw. Erstvotum der eingegebenen Kennziffer in der Leiste nachführen.
+        if (_initialisiert && ZeigtDokument && e.PropertyName is nameof(Student) or nameof(Matrikel) or nameof(Anonym))
+            UnterlagenLaden();
     }
 
     // ---------- Darstellung (von der View gelesen und geschrieben) ----------
@@ -139,6 +142,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Formalkriterien im Kopfbereich aufgeklappt.</summary>
     [ObservableProperty] public partial bool KriterienAufgeklappt { get; set; }
+
+    /// <summary>Übersicht: Bereiche „Statistik“ und „Aktionen“ aufgeklappt.</summary>
+    [ObservableProperty] public partial bool StatistikOffen { get; set; }
+
+    [ObservableProperty] public partial bool AktionenOffen { get; set; }
 
     public double BausteinBreite
     {
@@ -255,6 +263,10 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             NoteGesetzt = _einstellungen.NoteGesetzt ?? NotenIndex != Notenskala.Vorgabe;
+            UneingeschraenkteZustimmung = _einstellungen.Zustimmung;
+            EinigungSetzen(_einstellungen.Einigungsnote, _einstellungen.Gespraechsdatum, _einstellungen.ErstgutachterZugestimmt);
+            StatistikOffen = _einstellungen.StatistikOffen;
+            AktionenOffen = _einstellungen.AktionenOffen;
             string? rtf = _speicher.EntwurfLaden();
             if (rtf is not null) _editor.RtfSetzen(rtf);
             else if (!string.IsNullOrEmpty(alterEntwurf)) _editor.TextSetzen(alterEntwurf);
@@ -396,15 +408,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (!await AngabenVollstaendigAsync()) return;
 
-            if (Erstnote is int erst && ErstnoteAbweichend &&
-                !await _ui.BestaetigenAsync("Abweichung vom Erstgutachten",
-                    $"Erstgutachten: {Notenskala.MitPunkten(erst)}\nZweitgutachten: {Notenskala.MitPunkten(punkte)}\n\n" +
-                    $"Die Noten weichen um {Math.Abs(punkte - erst)} Punkte voneinander ab.\n\nTrotzdem erstellen?",
-                    "Trotzdem erstellen", "Zurück zur Note"))
-            {
-                _ui.Fokussieren(Eingabefeld.Note);
-                return;
-            }
+            if (!await DrittgutachtenPruefenAsync(punkte)) return;
 
             List<Baustein> unpassend = VerwendeteBausteine(entwurfstext).Where(b => !b.PasstZu(punkte)).ToList();
             if (unpassend.Count > 0)
@@ -449,12 +453,18 @@ public sealed partial class MainViewModel : ObservableObject
 
             // Erst Word, dann Excel: schlägt Word fehl, bleibt die Notenliste unverändert.
             string teilpunkteText = HatSchema ? string.Empty : TeilpunkteText();
-            List<List<TextLauf>> absaetze = TextNormalizer.FormatierteAbsaetze(format);
+            List<List<TextLauf>> absaetze = UneingeschraenkteZustimmung && Zweitkorrekturmodus
+                ? new() { new() { new TextLauf(Zweitkorrektur.Zustimmungstext) } }
+                : TextNormalizer.FormatierteAbsaetze(format);
             if (_konfiguration.GliederungFett) absaetze = TextNormalizer.GliederungFett(absaetze);
+            // Einigungsvermerk: am Platzhalter ###VERMERK###, sonst als letzter Absatz des Gutachtentexts.
+            if (VermerkText.Length > 0 && !GutachtenService.EnthaeltMarke(vorlage, Vermerkmarke))
+                absaetze.Add(new() { new TextLauf(VermerkText, kursiv: true) });
             _gutachten.Erzeugen(vorlage, ziel, absaetze, Platzhalter(punkte, teilpunkteText),
                 !HatSchema && _konfiguration.TeilpunkteAusgeben ? teilpunkteText : null,
                 Bewertungsbogen(), _konfiguration.BogenPunkteAusgeben);
 
+            Druckprotokoll.Entfernen(ordner, kennung);
             GutachtenEntwurf stand = ZustandErfassen();
             try
             {
@@ -516,7 +526,16 @@ public sealed partial class MainViewModel : ObservableObject
         return false;
     }
 
-    Dictionary<string, string> Platzhalter(int punkte, string teilpunkteText) => new()
+    Dictionary<string, string> Platzhalter(int punkte, string teilpunkteText)
+    {
+        // Schlusswendungen zuerst: Sie enthalten ###DEFINITION### und müssen vor dessen Ersetzung erkannt werden.
+        var p = new Dictionary<string, string>();
+        ZweitkorrekturPlatzhalter(p, punkte);
+        foreach (var (k, v) in GrundPlatzhalter(punkte, teilpunkteText)) p[k] = v;
+        return p;
+    }
+
+    Dictionary<string, string> GrundPlatzhalter(int punkte, string teilpunkteText) => new()
     {
         ["###DEFINITION###"] = Notenskala.Definition(punkte),
         ["###NOTE###"] = Notenskala.MitPunkten(punkte),
@@ -541,6 +560,8 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (AufgabenPunkte a in Aufgaben) a.Punkte = double.NaN;
         RohpunkteLeeren();
         NoteVorgeben(Notenskala.Vorgabe);
+        UneingeschraenkteZustimmung = false;
+        EinigungLeeren();
         BearbeiteteKennung = string.Empty;
         _editor.Leeren();
         _speicher.EntwurfLoeschen();
@@ -577,6 +598,10 @@ public sealed partial class MainViewModel : ObservableObject
         Rohkommentare = AktuelleRohkommentare(),
         Schema = _schemaKennung,
         Rtf = _editor.RtfLesen(),
+        Zustimmung = UneingeschraenkteZustimmung,
+        Einigungsnote = Einigungsnote,
+        Gespraechsdatum = Gespraechsdatum?.DateTime,
+        ErstgutachterZugestimmt = ErstgutachterZugestimmt,
         Stand = DateTime.Now,
     };
 
@@ -591,6 +616,8 @@ public sealed partial class MainViewModel : ObservableObject
         Seiten = Math.Max(0, e.Seiten);
         AuswahlWiederherstellen(e.Kriterien, e.Teilpunkte, alleZuruecksetzen: true);
         NoteGesetzt = true; // Note eines vorhandenen Gutachtens gilt als gewählt
+        UneingeschraenkteZustimmung = e.Zustimmung;
+        EinigungSetzen(e.Einigungsnote, e.Gespraechsdatum, e.ErstgutachterZugestimmt);
         if (string.IsNullOrEmpty(e.Rtf)) _editor.Leeren();
         else _editor.RtfSetzen(e.Rtf);
         BearbeiteteKennung = alsUeberarbeitung ? e.Kennung : string.Empty;
@@ -760,6 +787,12 @@ public sealed partial class MainViewModel : ObservableObject
         _einstellungen.Satzvorschlaege = Satzvorschlaege;
         _einstellungen.AngabenHervorheben = AngabenHervorheben;
         _einstellungen.NoteGesetzt = NoteGesetzt;
+        _einstellungen.Zustimmung = UneingeschraenkteZustimmung;
+        _einstellungen.Einigungsnote = Einigungsnote;
+        _einstellungen.Gespraechsdatum = Gespraechsdatum?.DateTime;
+        _einstellungen.ErstgutachterZugestimmt = ErstgutachterZugestimmt;
+        _einstellungen.StatistikOffen = StatistikOffen;
+        _einstellungen.AktionenOffen = AktionenOffen;
         _speicher.Speichern(_einstellungen);
         _einstellungenGeaendert = false;
     }
