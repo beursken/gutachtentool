@@ -78,6 +78,7 @@ public static class PaketService
         KlausurAblage.Formulierungen, KlausurAblage.WordVorlage, KlausurAblage.Konfiguration,
         Rohpunkte.Rohpunkteschema.Dateiname, Rohpunkte.Rohpunkteschema.Exceldatei,
         KlausurAblage.Sachverhalt, KlausurAblage.Loesung, Erstnoten.Datei, Normensammlung.Datei, Normensammlung.EigeneDatei,
+        Autokorrektur.AusnahmenDatei,
         "Erwartungshorizont.md", "Erwartungshorizont.txt", "Erwartungshorizont.docx", "Erwartungshorizont.pdf",
     };
 

@@ -107,6 +107,10 @@
                             <MenuFlyoutSeparator/>
                             <MenuFlyoutItem Text="Formulierungsdatei bearbeiten" Command="{x:Bind ViewModel.FormulierungenBearbeitenCommand}"/>
                             <MenuFlyoutItem Text="Formulierungsdatei importieren…" Command="{x:Bind ViewModel.FormulierungenImportierenCommand}"/>
+                            <MenuFlyoutItem Text="Autokorrektur bearbeiten (alle Klausuren)" Command="{x:Bind ViewModel.AutokorrekturBearbeitenCommand}"
+                                            ToolTipService.ToolTip="Autokorrektur.txt: je Zeile „falsch => richtig“; „Absatz # => Abs. #“ gilt nur vor Zahlen (Diktat)"/>
+                            <MenuFlyoutItem Text="Ausnahmen dieser Klausur bearbeiten" Command="{x:Bind ViewModel.AusnahmenBearbeitenCommand}"
+                                            ToolTipService.ToolTip="Ausnahmen.txt: Wörter, die in dieser Klausur nie berichtigt und nicht als Tippfehler markiert werden"/>
                             <MenuFlyoutSeparator/>
                             <MenuFlyoutItem Text="Klausurinformationen vorbereiten (KI-Portal)" Command="{x:Bind ViewModel.KlausurinformationenVorbereitenCommand}"
                                             ToolTipService.ToolTip="Im KI-Portal aus Sachverhalt und Lösung ein Paket erzeugen: Vorlage, Textbausteine, Rohpunkteschema, Erwartungshorizont">

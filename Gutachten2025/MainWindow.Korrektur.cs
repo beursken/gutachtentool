@@ -87,16 +87,60 @@ public sealed partial class MainWindow
 
     // ---------- Wörterbuch für die Rechtschreibprüfung ----------
 
-    /// <summary>Wörter aus Sachverhalt und Lösung als Benutzerwörterbuch anmelden; der Editor prüft danach neu.</summary>
+    /// <summary>
+    /// Wörter aus Sachverhalt, Lösung, Erwartungshorizont und Bausteinen (samt Beugungsformen) als Benutzerwörterbuch anmelden;
+    /// der Editor prüft danach neu (Prüfung kurz aus- und im nächsten Durchlauf wieder einschalten, damit Windows das Wörterbuch neu lädt).
+    /// </summary>
     void WoerterbuchAktualisieren()
     {
         Woerterbuch.Setzen(ViewModel.UnterlagenWoerter);
-        foreach (RichEditBox box in new[] { Main })
+        if (!Main.IsSpellCheckEnabled) return;
+        Main.IsSpellCheckEnabled = false;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => Main.IsSpellCheckEnabled = true);
+    }
+
+    // ---------- Tippfehler „GRoßbuchstabe“ ----------
+
+    /// <summary>Letzte Autokorrektur (absolute Position, ursprünglicher und neuer Text) – erkennt „Rückgängig“ (Strg+Z).</summary>
+    (int Start, string Alt, string Neu)? _letzteBerichtigung;
+    int _textLaenge;
+
+    /// <summary>
+    /// Autokorrektur nach einem Wortende bzw. nach einem diktierten Abschnitt (die Spracherkennung fügt mehrere Zeichen auf einmal ein):
+    /// „dei“ → „die“, „z.B.“ → „z. B.“, „Paragraph vier dreiunddreißig Absatz eins“ → „§ 433 Abs. 1“, „GRoß“ → „Groß“.
+    /// Strg+Z nimmt eine Berichtigung zurück; ein einzelnes Wort kommt dann in die Ausnahmen der Klausur.
+    /// </summary>
+    void TippfehlerPruefen()
+    {
+        int laenge = Main.Document.GetRange(0, int.MaxValue).EndPosition;
+        int eingefuegt = laenge - _textLaenge;
+        _textLaenge = laenge;
+        if (_letzteBerichtigung is { } r && eingefuegt == r.Alt.Length - r.Neu.Length && Rueckgaengig(r))
         {
-            if (!box.IsSpellCheckEnabled) continue;
-            box.IsSpellCheckEnabled = false;
-            box.IsSpellCheckEnabled = true;
+            _letzteBerichtigung = null;
+            if (!r.Alt.Any(char.IsWhiteSpace)) ViewModel.AusnahmeHinzufuegen(r.Alt);
+            return;
         }
+        if (!ViewModel.TippfehlerBerichtigen || Main.FocusState == FocusState.Unfocused || eingefuegt is < 1 or > 400) return;
+        ITextSelection auswahl = Main.Document.Selection;
+        int pos = auswahl.StartPosition;
+        if (auswahl.Length != 0 || pos < 2) return;
+        int von = Math.Max(0, pos - 200);
+        Main.Document.GetRange(von, pos).GetText(TextGetOptions.None, out string davor);
+        if (ViewModel.AutokorrekturVorschlag(davor, Math.Min(eingefuegt, davor.Length)) is not { } e) return;
+        int start = von + e.Start;
+        _letzteBerichtigung = (start, e.Alt, e.Neu);
+        Main.Document.GetRange(start, start + e.Laenge).Text = e.Neu;
+        int neuPos = pos + e.Neu.Length - e.Laenge;
+        Main.Document.Selection.SetRange(neuPos, neuPos);
+        _textLaenge = Main.Document.GetRange(0, int.MaxValue).EndPosition;
+    }
+
+    /// <summary>Steht an der Stelle der letzten Berichtigung wieder der ursprüngliche Text?</summary>
+    bool Rueckgaengig((int Start, string Alt, string Neu) b)
+    {
+        Main.Document.GetRange(b.Start, b.Start + b.Alt.Length).GetText(TextGetOptions.None, out string jetzt);
+        return jetzt == b.Alt;
     }
 
     // ---------- Seitenleiste: Suche, Baustein aus Markierung, Sprung zur Rohpunktzeile ----------

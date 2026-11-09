@@ -1,0 +1,112 @@
+﻿// Autokorrektur des Gutachtentools – gilt für alle Klausuren. Je Zeile „falsch => richtig“; Zeilen mit „//“ sind Anmerkungen.
+// Zeilen mit „#“ gelten nur vor einer Zahl (Diktat): „Absatz # => Abs. #“ macht aus „Absatz zwei“ bzw. „Absatz 2“ → „Abs. 2“;
+// ausgeschriebene Zahlen werden dabei zu Ziffern („Paragraph vier dreiunddreißig“ bzw. „vierhundertdreiunddreißig“ → „§ 433“).
+// Berichtigt wird beim Tippen, sobald das Wort abgeschlossen ist (Leerzeichen, Satzzeichen). Groß-/Kleinschreibung zählt;
+// am Satzanfang wird „Dei“ entsprechend zu „Die“. Fest eingebaut: „§433“ → „§ 433“, „Abs.1“ → „Abs. 1“ (ebenso Art., Nr., S., lit., Rn.)
+// sowie „GRoßbuchstabe“ → „Großbuchstabe“. Keine Berichtigung doppelter Wörter („die die“ ist zulässig) und keine
+// Wörterbuch-Ersetzungen von Abkürzungen („StPO“ bleibt). Wörter, die in einer Klausur nie berichtigt werden sollen,
+// gehören in deren Ausnahmeliste (Ausnahmen.txt im Klausurordner); Strg+Z nach einer Berichtigung trägt sie dort ein.
+
+// ---------- Diktat: Normzitate (nur vor einer Zahl; „Buchstabe“ auch vor einem Kleinbuchstaben) ----------
+Paragraph # => § #
+Paragraf # => § #
+Paragraphen # => §§ #
+Paragrafen # => §§ #
+Artikel # => Art. #
+Absatz # => Abs. #
+Absätze # => Abs. #
+Unterabsatz # => UAbs. #
+Satz # => S. #
+Sätze # => S. #
+Halbsatz # => Hs. #
+Nummer # => Nr. #
+Nummern # => Nr. #
+Buchstabe # => lit. #
+Buchstaben # => lit. #
+Randnummer # => Rn. #
+Randnummern # => Rn. #
+Alternative # => Alt. #
+Variante # => Var. #
+Abs. # => Abs. #
+S. # => S. #
+Nr. # => Nr. #
+Art. # => Art. #
+§ # => § #
+§§ # => §§ #
+
+// ---------- Juristische Schreibweisen ----------
+z.B. => z. B.
+d.h. => d. h.
+u.a. => u. a.
+i.V.m. => i. V. m.
+iVm => i. V. m.
+i.S.d. => i. S. d.
+i.S.v. => i. S. v.
+i.R.d. => i. R. d.
+i.E. => i. E.
+m.E. => m. E.
+h.M. => h. M.
+h.L. => h. L.
+a.A. => a. A.
+st.Rspr. => st. Rspr.
+s.o. => s. o.
+s.u. => s. u.
+v.a. => v. a.
+u.U. => u. U.
+o.Ä. => o. Ä.
+z.T. => z. T.
+z.Zt. => z. Zt.
+bzgl => bzgl.
+ggf => ggf.
+vgl => vgl.
+insb => insb.
+
+// ---------- Häufige Tippfehler ----------
+dei => die
+dre => der
+udn => und
+nud => und
+ien => ein
+eien => eine
+dsa => das
+nciht => nicht
+ncht => nicht
+nihct => nicht
+auhc => auch
+acuh => auch
+ncoh => noch
+onch => noch
+shcon => schon
+wrid => wird
+jedcoh => jedoch
+allerdigns => allerdings
+dahre => daher
+desahlb => deshalb
+insbesonders => insbesondere
+nähmlich => nämlich
+entgültig => endgültig
+garnicht => gar nicht
+seperat => separat
+Ergebniss => Ergebnis
+Anspurch => Anspruch
+Ansrpuch => Anspruch
+Vetrag => Vertrag
+Vertarg => Vertrag
+Sachverhatl => Sachverhalt
+Tatbestnad => Tatbestand
+Tatbesatnd => Tatbestand
+Rechtsfolgne => Rechtsfolgen
+Rechtsprechnug => Rechtsprechung
+Rechtsgrundalge => Rechtsgrundlage
+Vorraussetzung => Voraussetzung
+Vorraussetzungen => Voraussetzungen
+Vorrausetzung => Voraussetzung
+Vorrausetzungen => Voraussetzungen
+vorraussichtlich => voraussichtlich
+Wiederspruch => Widerspruch
+wiedersprechen => widersprechen
+Wiederruf => Widerruf
+wiederrufen => widerrufen
+Wiederrufsrecht => Widerrufsrecht
+Standart => Standard
+gemäss => gemäß

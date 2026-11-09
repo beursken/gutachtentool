@@ -68,6 +68,8 @@ public sealed class Einstellungen
     // Verhalten
     public bool WordOeffnen { get; set; } = true;
     public bool Satzvorschlaege { get; set; } = true;
+    /// <summary>Zwei Großbuchstaben am Wortanfang beim Tippen berichtigen („GRoß“ → „Groß“).</summary>
+    public bool TippfehlerBerichtigen { get; set; } = true;
     /// <summary>Fehlende Angaben (Note, Seiten, Gliederung) hervorheben und vor dem Erstellen nachfragen.</summary>
     public bool AngabenHervorheben { get; set; } = true;
     /// <summary>Note der laufenden Arbeit gewählt; null (ältere Einstellungen): gilt als gewählt, wenn sie von der Vorgabe abweicht.</summary>

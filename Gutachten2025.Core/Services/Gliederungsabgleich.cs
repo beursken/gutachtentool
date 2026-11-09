@@ -68,15 +68,35 @@ public static class Unterlagenwoerter
 {
     static readonly Regex Wort = new(@"(?<![\p{L}\d])[\p{L}][\p{L}\-’']{1,39}(?![\p{L}\d])", RegexOptions.CultureInvariant);
 
+    /// <summary>
+    /// Wörter samt gängiger Beugungsformen: Großgeschriebene erhalten -s/-es/-n/-en/-e/-ern (Genitiv, Plural),
+    /// Kleingeschriebene -e/-en/-er/-es/-em/-n/-s sowie die großgeschriebene Form (Satzanfang).
+    /// </summary>
     public static List<string> Aus(params string[] texte)
     {
-        var w = new SortedSet<string>(StringComparer.Ordinal);
+        var grund = new SortedSet<string>(StringComparer.Ordinal);
         foreach (string t in texte)
             foreach (Match m in Wort.Matches(t ?? string.Empty))
             {
                 string s = m.Value.Trim('-', '’', '\'');
-                if (s.Length >= 2) w.Add(s);
+                if (s.Length >= 2) grund.Add(s);
             }
-        return w.Take(20000).ToList();
+        var w = new SortedSet<string>(grund, StringComparer.Ordinal);
+        foreach (string s in grund)
+        {
+            if (s.Length < 4 || s.Any(c => c is '-' or '’' or '\'')) continue;
+            if (char.IsUpper(s[0]))
+            {
+                if (s.Skip(1).All(char.IsLower))
+                    foreach (string e in new[] { "s", "es", "n", "en", "e", "ern" }) w.Add(s + e);
+            }
+            else
+            {
+                foreach (string e in new[] { "e", "en", "er", "es", "em", "n", "s" }) w.Add(s + e);
+                w.Add(char.ToUpper(s[0], CultureInfo.CurrentCulture) + s[1..]);
+            }
+        }
+        // Grundformen zuerst (bei sehr langen Unterlagen gehen höchstens Beugungsformen verloren).
+        return grund.Concat(w.Except(grund)).Take(60000).ToList();
     }
 }

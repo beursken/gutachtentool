@@ -21,6 +21,102 @@ public sealed partial class MainViewModel
 {
     string _sachverhalt = string.Empty, _loesung = string.Empty;
     string? _bearbeitungsPfad;
+    HashSet<string> _bekannteWoerter = new(StringComparer.Ordinal);
+
+    /// <summary>Autokorrektur beim Tippen und Diktieren (Liste „Autokorrektur.txt“, Ausnahmen der Klausur, „GRoß“ → „Groß“).</summary>
+    [ObservableProperty] public partial bool TippfehlerBerichtigen { get; set; }
+
+    Autokorrektur _autokorrektur = new();
+    string? _autokorrekturOrdner;
+    DateTime _autokorrekturStand, _autokorrekturGeprueft;
+
+    /// <summary>
+    /// Vorschlag für den Text vor der Schreibmarke (<paramref name="eingefuegt"/> = eben eingefügte Zeichen; Diktat fügt mehrere ein);
+    /// null = nichts zu tun. Wörter aus den Unterlagen und die Ausnahmen der Klausur bleiben unverändert.
+    /// </summary>
+    public Autokorrektur.Ersetzung? AutokorrekturVorschlag(string davor, int eingefuegt)
+    {
+        if (!TippfehlerBerichtigen) return null;
+        AutokorrekturAktualisieren(false);
+        return _autokorrektur.Vorschlag(davor, eingefuegt, _bekannteWoerter);
+    }
+
+    /// <summary>Liste und Ausnahmen neu laden, wenn sich eine der Dateien geändert hat (höchstens alle zwei Sekunden geprüft).</summary>
+    void AutokorrekturAktualisieren(bool erzwingen)
+    {
+        DateTime jetzt = DateTime.UtcNow;
+        if (!erzwingen && jetzt - _autokorrekturGeprueft < TimeSpan.FromSeconds(2)) return;
+        _autokorrekturGeprueft = jetzt;
+        string? ordner = KlausurName.Length > 0 ? _ablage.KlausurOrdner(KlausurName) : null;
+        DateTime stand = Zeitstempel(Autokorrektur.ListenPfad(_ablage.VorlagenOrdner));
+        if (ordner is not null) stand = new[] { stand, Zeitstempel(Path.Combine(ordner, Autokorrektur.AusnahmenDatei)) }.Max();
+        if (!erzwingen && stand == _autokorrekturStand && ordner == _autokorrekturOrdner) return;
+        _autokorrektur = Autokorrektur.Laden(_ablage.VorlagenOrdner, ordner);
+        _autokorrekturStand = Zeitstempel(Autokorrektur.ListenPfad(_ablage.VorlagenOrdner));
+        if (ordner is not null) _autokorrekturStand = new[] { _autokorrekturStand, Zeitstempel(Path.Combine(ordner, Autokorrektur.AusnahmenDatei)) }.Max();
+        _autokorrekturOrdner = ordner;
+        if (_autokorrektur.Ausnahmen.Any(w => !_bekannteWoerter.Contains(w)))
+        {
+            _bekannteWoerter.UnionWith(_autokorrektur.Ausnahmen);
+            UnterlagenWoerter = UnterlagenWoerter.Union(_autokorrektur.Ausnahmen, StringComparer.Ordinal).ToList();
+        }
+
+        static DateTime Zeitstempel(string pfad) => File.Exists(pfad) ? File.GetLastWriteTimeUtc(pfad) : DateTime.MinValue;
+    }
+
+    /// <summary>Nach „Rückgängig“ einer Berichtigung: Wort in die Ausnahmen der Klausur aufnehmen (gilt dauerhaft).</summary>
+    public void AusnahmeHinzufuegen(string wort)
+    {
+        if (KlausurName.Length == 0 || string.IsNullOrWhiteSpace(wort) || wort.Any(char.IsWhiteSpace)) return;
+        try
+        {
+            if (!Autokorrektur.AusnahmeHinzufuegen(_ablage.KlausurOrdner(KlausurName), wort)) return;
+            AutokorrekturAktualisieren(true);
+            _ui.Melden(Meldungsart.Information, "Ausnahme gespeichert",
+                $"„{wort}“ wird in dieser Klausur nicht mehr automatisch berichtigt.", "Ausnahmen öffnen", () => AusnahmenBearbeiten());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            EinstellungsSpeicher.Protokollieren(ex);
+        }
+    }
+
+    /// <summary>Autokorrekturliste (für alle Klausuren) im Editor öffnen.</summary>
+    [RelayCommand]
+    void AutokorrekturBearbeiten()
+    {
+        string pfad = Autokorrektur.ListenPfad(_ablage.VorlagenOrdner);
+        try
+        {
+            if (!File.Exists(pfad)) Autokorrektur.Laden(_ablage.VorlagenOrdner, null); // legt die Programmvorlage an
+            _ui.Oeffnen(pfad);
+            _ui.Melden(Meldungsart.Information, "Autokorrektur geöffnet",
+                "Je Zeile „falsch => richtig“; „Absatz # => Abs. #“ gilt nur vor Zahlen. Änderungen gelten nach dem Speichern sofort.");
+        }
+        catch (Exception ex)
+        {
+            Fehler(ex, "Autokorrektur nicht geöffnet", pfad);
+        }
+    }
+
+    /// <summary>Ausnahmen der aktuellen Klausur im Editor öffnen (Datei wird bei Bedarf angelegt).</summary>
+    [RelayCommand]
+    void AusnahmenBearbeiten()
+    {
+        if (KlausurOrdnerOderMeldung() is not string ordner) return;
+        string pfad = Path.Combine(ordner, Autokorrektur.AusnahmenDatei);
+        try
+        {
+            if (!File.Exists(pfad)) File.WriteAllText(pfad, Autokorrektur.AusnahmenKopf, new System.Text.UTF8Encoding(true));
+            _ui.Oeffnen(pfad);
+            _ui.Melden(Meldungsart.Information, "Ausnahmen geöffnet",
+                "Je Zeile ein Wort, das in dieser Klausur nie berichtigt und nicht als Tippfehler markiert wird.");
+        }
+        catch (Exception ex)
+        {
+            Fehler(ex, "Ausnahmen nicht geöffnet", pfad);
+        }
+    }
     Leistenanzeige _letzteUnterlage = Leistenanzeige.Sachverhalt;
 
     [ObservableProperty]
@@ -194,7 +290,11 @@ public sealed partial class MainViewModel
         };
         // Normzitate: Hinweis beim Überfahren, Klick bzw. Strg+Klick zeigt den Volltext.
         UnterlagenHtml = Leiste == Leistenanzeige.Bausteine ? html : Normverweise.Auszeichnen(html, NormHinweis);
-        UnterlagenWoerter = Unterlagenwoerter.Aus(_sachverhalt, _loesung);
+        UnterlagenWoerter = Unterlagenwoerter.Aus(_sachverhalt, _loesung,
+            ordner is null ? string.Empty : Lesen(Path.Combine(ordner, "Erwartungshorizont.md")) + "\n" + Lesen(Path.Combine(ordner, "Erwartungshorizont.txt")),
+            string.Join("\n", Formulierungsdatei.Alle(Bausteine).Select(b => b.Text)));
+        _bekannteWoerter = new HashSet<string>(UnterlagenWoerter, StringComparer.Ordinal);
+        AutokorrekturAktualisieren(true);
         OnPropertyChanged(nameof(HatSachverhalt));
         OnPropertyChanged(nameof(HatLoesung));
         OnPropertyChanged(nameof(UnterlageLeer));

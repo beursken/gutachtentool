@@ -55,6 +55,11 @@
                             <button @onclick="() => Los(_vm.VorlageImportierenCommand)">Word-Vorlage @Laden …</button>
                             <button @onclick="() => Los(_vm.FormulierungenBearbeitenCommand)">Textbausteine (Texte.txt) @Oeffnen</button>
                             <button @onclick="() => Los(_vm.FormulierungenImportierenCommand)">Textbausteine @Laden …</button>
+                            @if (!Plattform.ImBrowser)
+                            {
+                                <button @onclick="() => Los(_vm.AutokorrekturBearbeitenCommand)" title="Autokorrektur.txt für alle Klausuren: je Zeile „falsch => richtig“; „Absatz # => Abs. #“ gilt nur vor Zahlen">Autokorrektur @Oeffnen</button>
+                                <button @onclick="() => Los(_vm.AusnahmenBearbeitenCommand)" title="Ausnahmen.txt: Wörter, die in dieser Klausur nie berichtigt werden">Ausnahmen dieser Klausur @Oeffnen</button>
+                            }
                             <button @onclick="() => Los(_vm.RohpunkteInExcelBearbeitenCommand)">Rohpunkteschema in Excel @Oeffnen</button>
                             <button @onclick="() => Los(_vm.RohpunkteImportierenCommand)">Rohpunkteschema @Laden …</button>
                             <hr />
@@ -62,9 +67,12 @@
                             <button @onclick="() => Los(_vm.BausteinstatistikSendenCommand)" title="Nur Bausteine und Zahl der Gutachten – keine Kennziffern oder Texte">Bausteinstatistik an das KI-Portal senden …</button>
                             <button @onclick="() => Los(_vm.PaketImportierenWaehlenCommand)">Paket (.gtpaket) öffnen …</button>
                             <button @onclick="() => Los(_vm.PaketExportierenCommand)">Paket für Zweitkorrektur erstellen</button>
+                            <hr />
+                            <label class="schalter" title="Beim Tippen und Diktieren: „dei“ → „die“, „z.B.“ → „z. B.“, „Paragraph 433 Absatz eins“ → „§ 433 Abs. 1“, „GRoß“ → „Groß“; Abkürzungen wie „StPO“, doppelte Wörter und Wörter aus den Unterlagen bleiben">
+                                <input type="checkbox" checked="@_vm.TippfehlerBerichtigen" @onchange="e => _vm.TippfehlerBerichtigen = e.Value is true" /> Autokorrektur beim Tippen
+                            </label>
                             @if (!Plattform.ImBrowser)
                             {
-                                <hr />
                                 <label class="schalter" title="Abgeschaltet: Das Gutachten wird nur im Klausurordner gespeichert.">
                                     <input type="checkbox" checked="@_vm.WordOeffnen" @onchange="e => _vm.WordOeffnen = e.Value is true" /> Gutachten nach dem Erstellen öffnen
                                 </label>
@@ -630,6 +638,12 @@
     };
 
     // ---------- Normen und Gliederung ----------
+
+    [JSInvokable]
+    public Gutachten2025.Services.Autokorrektur.Ersetzung? Autokorrektur(string davor, int eingefuegt) => _vm?.AutokorrekturVorschlag(davor, eingefuegt);
+
+    [JSInvokable]
+    public void AusnahmeHinzufuegen(string wort) => _vm?.AusnahmeHinzufuegen(wort);
 
     [JSInvokable]
     public async Task NormGewaehlt(string gesetz, string nr)

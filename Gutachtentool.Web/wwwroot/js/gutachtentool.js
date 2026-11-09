@@ -156,7 +156,8 @@ window.gutachtentool = (() => {
             el.dataset.angemeldet = '1';
             try { document.execCommand('styleWithCSS', false, false); } catch (e) { /* ältere Browser */ }
             document.addEventListener('selectionchange', () => cursorMerken(el));
-            el.addEventListener('input', () => { melden(id); kuerzelHinweis(el); });
+            el.addEventListener('input', e => { melden(id); kuerzelHinweis(el); tippfehler(el, e.inputType, e.data); });
+            el.addEventListener('compositionend', e => tippfehler(el, 'insertText', e.data));
             el.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) kuerzelHinweis(el); });
             el.addEventListener('blur', () => { hinweisVerbergen(); normHinweisVerbergen(); });
             // Normzitate: Mauszeiger zeigt den Normtext; Strg+Klick öffnet ihn bzw. springt bei „Frage 1“ zur Lösung.
@@ -275,6 +276,31 @@ window.gutachtentool = (() => {
     // Graue Vorschau, wenn vor der Schreibmarke ein Kürzel steht (Tab fügt den Baustein ein).
     let hinweis = null;
     function hinweisVerbergen() { if (hinweis) hinweis.hidden = true; }
+    // Autokorrektur nach dem Wortende bzw. nach einem diktierten Abschnitt; die Regeln (Liste, Ausnahmen, Diktat) prüft .NET.
+    let letzteBerichtigung = null;
+    async function tippfehler(el, art, daten) {
+        if (!seite) return;
+        if (art === 'historyUndo' && letzteBerichtigung) {
+            // Strg+Z nach einer Berichtigung: Wort künftig in dieser Klausur nicht mehr berichtigen.
+            const b = letzteBerichtigung;
+            letzteBerichtigung = null;
+            if (textVorCursor(el, 300).includes(b.alt) && !/\s/u.test(b.alt)) seite.invokeMethodAsync('AusnahmeHinzufuegen', b.alt);
+            return;
+        }
+        if ((art !== 'insertText' && art !== 'insertReplacementText') || !daten) return;
+        if (daten.length === 1 && !/^[\s.,;:!?)"“«»']$/u.test(daten)) return;
+        const vor = textVorCursor(el, 200);
+        const e = await seite.invokeMethodAsync('Autokorrektur', vor, Math.min(daten.length, vor.length));
+        if (!e || textVorCursor(el, 200) !== vor) return; // inzwischen weitergetippt
+        const s = document.getSelection();
+        const dahinter = vor.length - e.start - e.laenge;
+        for (let i = 0; i < dahinter; i++) s.modify('move', 'backward', 'character');
+        for (let i = 0; i < e.laenge; i++) s.modify('extend', 'backward', 'character');
+        document.execCommand('insertText', false, e.neu);
+        for (let i = 0; i < dahinter; i++) s.modify('move', 'forward', 'character');
+        letzteBerichtigung = { alt: e.alt, neu: e.neu };
+    }
+
     function kuerzelHinweis(el) {
         const s = document.getSelection();
         const m = s && s.isCollapsed ? kuerzelVorCursor.exec(textVorCursor(el, 30)) : null;

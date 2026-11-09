@@ -185,3 +185,45 @@ public class ArbeitsdokumenteTests
         Assert.Null(Druckprotokoll.Zuordnen("Brief.docx", staemme));
     }
 }
+
+public class TippfehlerTests
+{
+    [Theory]
+    [InlineData("GRoßbuchstabe", "Großbuchstabe")]
+    [InlineData("DIe", "Die")]
+    [InlineData("UNd", "Und")]
+    [InlineData("KAufvertrag", "Kaufvertrag")]
+    public void ZweiGrossbuchstabenWerdenBerichtigt(string wort, string erwartet) =>
+        Assert.Equal(erwartet, Tippfehler.Berichtigen(wort));
+
+    [Theory]
+    [InlineData("BGB")]
+    [InlineData("BGBl")]
+    [InlineData("BVerfG")]
+    [InlineData("USt")]
+    [InlineData("AGs")]
+    [InlineData("GmbH")]
+    [InlineData("ITler")]
+    [InlineData("Großbuchstabe")]
+    public void AbkuerzungenBleiben(string wort) => Assert.Null(Tippfehler.Berichtigen(wort));
+
+    [Fact]
+    public void WoerterDerUnterlagenBleiben() =>
+        Assert.Null(Tippfehler.Berichtigen("ABler", new HashSet<string> { "ABler" }));
+
+    [Fact]
+    public void WortVorDemWortende()
+    {
+        Assert.Equal((4, "GRoß"), Tippfehler.WortVor("Ein GRoß ", 8));
+        Assert.Equal(-1, Tippfehler.WortVor("EU-WEit ", 7).Start);
+    }
+
+    [Fact]
+    public void BeugungsformenFuerDieRechtschreibpruefung()
+    {
+        List<string> w = Unterlagenwoerter.Aus("Der Kaufvertrag ist gutgläubig.");
+        Assert.Contains("Kaufvertrags", w);
+        Assert.Contains("gutgläubigen", w);
+        Assert.Contains("Gutgläubig", w);
+    }
+}

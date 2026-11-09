@@ -81,6 +81,7 @@ public sealed partial class MainWindow
         var zeile = new CheckBox { Content = "Zeilenlänge im Editor begrenzen (ca. 85 Zeichen, zentriert)", IsChecked = ViewModel.ZeilenbreiteBegrenzt };
         var word = new CheckBox { Content = "Gutachten nach dem Erstellen in Word öffnen", IsChecked = ViewModel.WordOeffnen };
         var vorschlaege = new CheckBox { Content = "Satzvorschläge beim Tippen", IsChecked = ViewModel.Satzvorschlaege };
+        var tippfehler = new CheckBox { Content = "Autokorrektur beim Tippen und Diktieren („dei“ → „die“, „Paragraph 433 Absatz eins“ → „§ 433 Abs. 1“, „GRoß“ → „Groß“)", IsChecked = ViewModel.TippfehlerBerichtigen };
         var ablage = new TextBlock { Text = ViewModel.AblageordnerText, TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
         var ablageKnopf = new Button { Content = "Ablageordner wählen…" };
 
@@ -92,6 +93,7 @@ public sealed partial class MainWindow
         panel.Children.Add(new TextBlock { Text = "Verhalten", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         panel.Children.Add(word);
         panel.Children.Add(vorschlaege);
+        panel.Children.Add(tippfehler);
         panel.Children.Add(new TextBlock { Text = "Ablageordner (Klausuren, Gutachten, Notenlisten)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         panel.Children.Add(ablage);
         panel.Children.Add(ablageKnopf);
@@ -126,6 +128,7 @@ public sealed partial class MainWindow
         ViewModel.ZeilenbreiteBegrenzt = zeile.IsChecked == true;
         ViewModel.WordOeffnen = word.IsChecked == true;
         ViewModel.Satzvorschlaege = vorschlaege.IsChecked == true;
+        ViewModel.TippfehlerBerichtigen = tippfehler.IsChecked == true;
         ViewModel.Autosave(erzwingen: true);
 
         DarstellungAnwenden();

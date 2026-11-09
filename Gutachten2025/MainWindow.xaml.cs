@@ -410,6 +410,7 @@ public sealed partial class MainWindow : Window, IUiService, IEntwurfEditor
 
     void Main_TextChanged(object sender, RoutedEventArgs e)
     {
+        TippfehlerPruefen();
         ViewModel.EntwurfGeaendert();
         WoerterZaehlen();
         VorschlagPlanen();

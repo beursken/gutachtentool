@@ -249,6 +249,7 @@ public sealed partial class MainViewModel : ObservableObject
             Leiste = Enum.IsDefined((Leistenanzeige)_einstellungen.Leiste) ? (Leistenanzeige)_einstellungen.Leiste : Leistenanzeige.Bausteine;
             KriterienAufgeklappt = _einstellungen.KriterienAufgeklappt;
             Satzvorschlaege = _einstellungen.Satzvorschlaege;
+            TippfehlerBerichtigen = _einstellungen.TippfehlerBerichtigen;
             BearbeiteteKennung = _einstellungen.BearbeiteteKennung ?? string.Empty;
 
             string klausur = Klausuren.FirstOrDefault(k => Gleich(k, _einstellungen.Klausur))
@@ -785,6 +786,7 @@ public sealed partial class MainViewModel : ObservableObject
         _einstellungen.Leiste = (int)Leiste;
         _einstellungen.KriterienAufgeklappt = KriterienAufgeklappt;
         _einstellungen.Satzvorschlaege = Satzvorschlaege;
+        _einstellungen.TippfehlerBerichtigen = TippfehlerBerichtigen;
         _einstellungen.AngabenHervorheben = AngabenHervorheben;
         _einstellungen.NoteGesetzt = NoteGesetzt;
         _einstellungen.Zustimmung = UneingeschraenkteZustimmung;
